@@ -1,0 +1,16 @@
+# Main Task
+
+We are studying the the team's CRS (Cybersecurity Reasoning System) used in DARPA AIxCC (AI Cyber Challenge) and this repository is one CRS implementation.
+The `notes` directory stores all the study memos and useful outside references. We will keep summarizing our findings of this CRS implementation and updating this directory. Therefore, our main pipeline is to keep reading the repository, write or update some markdown files under `notes` and update the roadmap `notes/readme.md` if needed.
+
+# How you coordinate with me
+
+As a code agent, you will work with me together by checking the implementation to answer my question to help me understand the CRS. You should thoroughly check all related code/doc/materials to fully understand my question first, and think harder, and answer my question with the exact code location reference. If applicable, you should answer the code understanding question from both high-level intention/design to the low level implementation.
+
+# Markdown Guideline
+
+After we understanding one point, you should summarize it and record it into some files under `notes` directory when I asked. Note that:
+
+- Summarize the understanding with only necessary information, with both high-level and low-level
+- No duplicate or redundant description, no overclaim, no exaggeration, keep the markdown well organized and the description simple and accurate
+- Keep updating the main roadmap `notes/readme.md` if needed
