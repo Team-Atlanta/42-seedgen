@@ -1,5 +1,6 @@
 # Roadmap of the CRS study
 
+- The [local copy of blog](blog.md) provides the overview of the 42-b3yond-6ug team's CRS (in section "About 42-b3yond-6ug")
 
 # references
 
