@@ -5,7 +5,9 @@
 The [local copy of blog](blog.md) provides the overview of the 42-b3yond-6ug team's CRS (in section "About 42-b3yond-6ug").
 According to the blog, its main component is a traditional fuzzing pipeline, with LLMs assisting on the following components:
 
-- [Seedgen Component](seedgen.md)
+- [Seedgen Component](seedgen.md) - LLM-powered seed generation with multiple strategies
+  - [Full Mode Deep Dive](seedgen-fullmode.md) - Compiler instrumentation and dynamic analysis for C/C++
+  - [Mini Mode Deep Dive](seedgen-minimode.md) - Lightweight static analysis for all languages
 - [Corpus Grabber Component](corpus_grabber.md)  
 - [Patch Agent Component](patch_agent.md)
 - [SARIF Component](sarif.md)

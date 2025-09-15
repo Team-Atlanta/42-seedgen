@@ -121,8 +121,6 @@ graph TB
     class CODEX unused
 ```
 
-## Overall Workflow
-
 The seedgen component follows a multi-layered parallel processing workflow with three levels of parallelism:
 
 - **Task Reception and Distribution**: [`task_handler.py#L384-557`](../components/seedgen/task_handler.py#L384)
@@ -198,14 +196,14 @@ The infrastructure components provide the underlying technical capabilities that
    - Skips Claude models ([line 766](../components/seedgen/infra/aixcc.py:766): `if "claude" in gen_model: return`)
    - Java projects skip corpus minimization ([`send_to_cmin=not is_java`](../components/seedgen/infra/aixcc.py:834))
 
-### Java/JVM Support Summary
+### Mode Comparison Summary
 
-| Mode | Java Support | Note |
-|------|-------------|------|
-| Full | ❌ No | Explicitly skips Java projects ([lines 608-610](../components/seedgen/infra/aixcc.py:608)) |
-| Mini | ✅ Yes | Works with Java, skips cmin queue |
-| MCP | ✅ Yes | Works with Java |
-| Codex | ✅ Yes | Works with Java, skips cmin queue |
+| Mode | Language Support | Compilation Required | Coverage Feedback | Script Evolution | Execution Time | Infrastructure | Corpus Minimization |
+|------|-----------------|---------------------|-------------------|------------------|----------------|---------------|-------------------|
+| **Full** | C/C++ only | Yes (instrumented) | Yes (via SeedD) | 3 iterations with refinement | Slower | Complex (SeedD, getcov, LLVM) | Always for C/C++ |
+| **Mini** | All languages | No | No | Single generation | Faster | Simple (Docker only) | C/C++ only, skip for Java |
+| **MCP** | All languages | No |  |  |  |  |  |
+| **Codex** | All languages | No |  |  |  |  | C/C++ only, skip for Java |
 
 
 ### 1. Full Mode
@@ -221,6 +219,16 @@ Full Mode uses compiler instrumentation and dynamic analysis for C/C++ projects.
 See the [detailed documentation](./seedgen-fullmode.md) for the complete method-level workflow, architecture diagrams, and implementation specifics.
 
 ### 2. Mini Mode
+
+**For comprehensive technical details, see [Mini Mode Deep Dive](./seedgen-minimode.md)**
+
+Mini Mode uses static harness analysis without compilation for all programming languages. Key highlights:
+- No compilation or instrumentation required
+- Supports Java/JVM projects
+- Single-pass script generation
+- Docker-based seed execution
+
+See the [detailed documentation](./seedgen-minimode.md) for the complete workflow, architecture diagrams, and implementation specifics.
 
 ### 3. MCP Mode
 
