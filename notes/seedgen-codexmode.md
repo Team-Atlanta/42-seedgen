@@ -75,9 +75,14 @@ graph TB
     subgraph S4["STAGE 4: SEEDCODEXAGENT PIPELINE - AUTONOMOUS CODEBASE ANALYSIS (Per Harness)"]
         direction TB
         
-        subgraph "Step 1: Prompt Construction"
-            BUILD_PROMPT["Build Analysis Prompt<br/>(seedcodex.py:46-60)"]
-            
+        STEP1["Step 1: Prompt Construction<br/>(seedcodex.py:46-60)"]
+        STEP2["Step 2: Codexbot Initialization<br/>(seedcodex.py:62-63)"]
+        STEP3["Step 3: Codex CLI Invocation<br/>(codexbot.py:271-300)"]
+        STEP4["Step 4: Autonomous Code Analysis<br/>(External Process)"]
+        STEP5["Step 5: Script Generation & Validation<br/>(codexbot.py:227-246)"]
+        STEP6["Step 6: Result Processing<br/>(codexbot.py:301-335)"]
+        
+        subgraph "Step 1 Details"
             subgraph "Prompt Components"
                 P1["Harness source code"]
                 P2["Codebase location"]
@@ -85,25 +90,13 @@ graph TB
                 P4["Generation requirements:<br/>• Create Python generator script<br/>• Maximize code coverage<br/>• Security-focused test cases<br/>• Edge cases and vulnerabilities"]
                 P5["Autonomy rules:<br/>• Work independently<br/>• Register tree-sitter first<br/>• Token limit awareness"]
             end
-            
-            BUILD_PROMPT --> P1
-            BUILD_PROMPT --> P2
-            BUILD_PROMPT --> P3
-            BUILD_PROMPT --> P4
-            BUILD_PROMPT --> P5
         end
         
-        subgraph "Step 2: Codexbot Initialization"
-            INIT_BOT["Create Codexbot Instance<br/>(seedcodex.py:62-63)"]
-            
+        subgraph "Step 2 Details"
             BOT_CONFIG["Configuration:<br/>• seedd: None (no dynamic analysis)<br/>• harness_binary: name<br/>• target_project_dir: source path<br/>• model: GPT-4.1/O4-mini"]
-            
-            INIT_BOT --> BOT_CONFIG
         end
         
-        subgraph "Step 3: Codex CLI Invocation"
-            CODEX_RUN["codexbot.run()<br/>(codexbot.py:271-300)"]
-            
+        subgraph "Step 3 Details"
             subgraph "Ultra-Thinking Mode"
                 ULTRA["ULTRA_THINKING_PROMPT<br/>(codexbot.py:28-34)"]
                 RIGOR["• Greater rigor & detail<br/>• Multi-angle verification<br/>• Challenge assumptions<br/>• Triple-verify everything<br/>• Cross-check with tools<br/>• Systematic weakness search"]
@@ -115,18 +108,10 @@ graph TB
                 CMD_ARGS["Arguments:<br/>• -q: Quiet mode<br/>• --approval-mode full-auto<br/>• --model: LLM model<br/>• Prompt with task"]
                 
                 ENV_VARS["Environment:<br/>• OPENAI_API_KEY<br/>• OPENAI_BASE_URL<br/>• Working dir: project root"]
-                
-                CODEX_CMD --> CMD_ARGS
-                CODEX_CMD --> ENV_VARS
             end
-            
-            CODEX_RUN --> ULTRA
-            ULTRA --> CODEX_CMD
         end
         
-        subgraph "Step 4: Autonomous Code Analysis"
-            ANALYSIS["Codex Tool Analysis<br/>(External Process)"]
-            
+        subgraph "Step 4 Details"
             subgraph "Available Capabilities"
                 CAP1["Tree-sitter AST parsing<br/>Register & query code structure"]
                 CAP2["File system navigation<br/>Read source files with token limits"]
@@ -141,21 +126,9 @@ graph TB
                 ACT4["Discover file format specs"]
                 ACT5["Find edge cases & boundaries"]
             end
-            
-            ANALYSIS --> CAP1
-            ANALYSIS --> CAP2
-            ANALYSIS --> CAP3
-            ANALYSIS --> CAP4
-            CAP1 --> ACT1
-            CAP2 --> ACT2
-            CAP3 --> ACT3
-            CAP4 --> ACT4
-            CAP4 --> ACT5
         end
         
-        subgraph "Step 5: Script Generation & Validation"
-            GEN_GRAPH["LangGraph Workflow<br/>(codexbot.py:227-246)"]
-            
+        subgraph "Step 5 Details"
             subgraph "Graph Nodes"
                 NODE_GEN["GenerationNode<br/>Initial script creation"]
                 NODE_VAL["ScriptValidationNode<br/>Extract & validate Python"]
@@ -168,41 +141,34 @@ graph TB
                 GEN_SEEDS["Generate 400 seeds<br/>(num_seeds=400)"]
                 RETRY["Retry on error<br/>Max 5 attempts"]
             end
-            
-            GEN_GRAPH --> NODE_GEN
-            NODE_GEN --> NODE_VAL
-            NODE_VAL --> NODE_ERR
-            NODE_VAL --> EXTRACT
-            EXTRACT --> VALIDATE
-            VALIDATE --> GEN_SEEDS
-            NODE_ERR --> RETRY
         end
         
         SCRIPT_FINAL["📄 Final Generator Script<br/>400 seeds generated<br/>No coverage measurement"]
         
-        subgraph "Step 6: Result Processing"
-            RESULT["Process Results<br/>(codexbot.py:301-335)"]
-            
+        subgraph "Step 6 Details"
             NO_COVERAGE["No Coverage Analysis<br/>seedd=None, skip evaluation<br/>Empty SeedFeedback"]
             
             TRACKER["Track Generation<br/>Log prompt, script, metadata"]
-            
-            RESULT --> NO_COVERAGE
-            RESULT --> TRACKER
         end
         
-        %% Flow connections
-        BUILD_PROMPT --> INIT_BOT
-        INIT_BOT --> CODEX_RUN
-        CODEX_RUN --> ANALYSIS
-        ANALYSIS --> GEN_GRAPH
-        GEN_GRAPH --> SCRIPT_FINAL
-        SCRIPT_FINAL --> RESULT
+        %% Main flow connections (step to step)
+        STEP1 -.-> STEP2
+        STEP2 -.-> STEP3
+        STEP3 -.-> STEP4
+        STEP4 -.-> STEP5
+        STEP5 -.-> SCRIPT_FINAL
+        SCRIPT_FINAL -.-> STEP6
         
         %% Styling for clarity
         style SCRIPT_FINAL fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
         style ULTRA fill:#fff3e0,stroke:#ff9800,stroke-width:2px
         style NO_COVERAGE fill:#ffebee,stroke:#f44336,stroke-width:2px
+        style STEP1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+        style STEP2 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+        style STEP3 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+        style STEP4 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+        style STEP5 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+        style STEP6 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
     end
 
     OUT4["OUTPUT → STAGE 5<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/>• Generated seeds (400 per harness)<br/>• Generator Python scripts<br/>• No coverage metrics"]
