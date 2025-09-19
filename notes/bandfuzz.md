@@ -53,6 +53,25 @@ BandFuzz is a collaborative fuzzing framework designed for large-scale parallel 
 4. Combines weighted scores (both factors weighted at 1.0) and uses probabilistic selection
 5. Runs fuzzing with configurable timeout intervals
 
+#### Seed Management System
+- **Main Implementation**: [internal/seeds/seeds.go](../components/bandfuzz/internal/seeds/seeds.go)
+- **Architecture**: Fan-in pattern with batched processing
+- **Storage Location**: `/crs/b3fuzz/seeds/` directory
+
+**Seed Processing Pipeline**:
+1. **Collection**: Gathers seeds from multiple fuzzer instances via channels
+2. **Batching**: Groups seeds by (TaskID, Harness) pairs
+   - Batch size: 1024 seeds or 1-minute intervals
+   - Prevents overwhelming downstream components
+3. **Bundling**: For each (TaskID, Harness) group:
+   - Creates temporary directory with UUID-renamed seed files
+   - Compresses into `.tar.gz` bundle: `{harness}-{uuid}.tar.gz`
+   - Stores in shared seed directory
+4. **Distribution**:
+   - Publishes `CminMessage` to `cmin_queue` (RabbitMQ) for corpus minimization
+   - Saves seed metadata to database with `GeneralFuzz` type
+5. **Concurrency**: Processes multiple harness groups in parallel with goroutines
+
 #### AFL++ Integration
 - **Main Implementation**: [internal/fuzz/aflpp/aflpp.go](../components/bandfuzz/internal/fuzz/aflpp/aflpp.go)
 - Supports multiple AFL++ fuzzing modes: `afl`, `aflpp`, `directed`
