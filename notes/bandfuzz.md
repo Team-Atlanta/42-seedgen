@@ -72,9 +72,18 @@ BandFuzz is a collaborative fuzzing framework designed for large-scale parallel 
    - Saves seed metadata to database with `GeneralFuzz` type
 5. **Concurrency**: Processes multiple harness groups in parallel with goroutines
 
+#### Fuzzer Engine Support
+- **Architecture**: Pluggable fuzzer interface via [internal/fuzz/type.go](../components/bandfuzz/internal/fuzz/type.go)
+- **Supported Engines**: **AFL++ family only**
+  - `afl`: Standard AFL fuzzing
+  - `aflpp`: AFL++ with advanced features
+  - `directed`: Directed fuzzing mode
+- **LibFuzzer**: Exists as stub ([libfuzzer.go](../components/bandfuzz/internal/fuzz/libfuzzer.go#L11)) but **NOT implemented**
+  - Returns `nil` and "libfuzzer is not supported yet" error
+  - Exists only for dependency injection testing
+
 #### AFL++ Integration
 - **Main Implementation**: [internal/fuzz/aflpp/aflpp.go](../components/bandfuzz/internal/fuzz/aflpp/aflpp.go)
-- Supports multiple AFL++ fuzzing modes: `afl`, `aflpp`, `directed`
 - **Multi-core Orchestration**: Runs one master instance + (core_count-1) slave instances
 - **Local Optimization**: Copies harness binaries to local temp directories for reduced I/O latency
 - **Crash/Seed Monitoring**: Uses file system watchers to detect new crashes and seeds
