@@ -22,6 +22,11 @@ cargo install mdbook
 cargo install mdbook-mermaid
 ```
 
+### 4. Install mdbook-pagetoc (for page table of contents)
+```bash
+cargo install mdbook-pagetoc
+```
+
 ## Usage
 
 ### Build the book

@@ -13,11 +13,13 @@ default-theme = "light"
 preferred-dark-theme = "navy"
 git-repository-url = "https://github.com/Team-Atlanta/42-afc-crs"
 edit-url-template = "https://github.com/Team-Atlanta/42-afc-crs/edit/main/notes/{path}"
-additional-js = ["js/mermaid.min.js", "js/mermaid-init.js"]
+additional-js = ["js/mermaid.min.js", "js/mermaid-init.js", "theme/pagetoc.js"]
+additional-css = ["theme/pagetoc.css"]
 
 [preprocessor.mermaid]
 command = "mdbook-mermaid"
 
+[preprocessor.pagetoc]
 
 [preprocessor.links]
 # This allows you to use {{#repo:path/to/file.py}} in markdown
