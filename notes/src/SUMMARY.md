@@ -31,6 +31,8 @@
 - [Patch Generation](./patch_agent.md)
   - [PatchAgent Prompts](./patchagent-prompts.md)
   - [PatchAgent Reproducer](./patchagent-reproducer.md)
+  - [Counterexample Sampling Strategy](./patchagent-counterexample-sampling.md)
+  - [Auto-Hint System](./patchagent-autohint.md)
 
 - [SARIF Processing](./sarif.md)
 
