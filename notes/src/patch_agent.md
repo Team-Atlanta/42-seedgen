@@ -55,14 +55,40 @@ for counterexample_num in [0, 3]:
 - No minimal edit distance for patch correction
 - No proactive symbol exploration based on sanitizer reports
 
-#### Language Server Integration: Real LSP Implementation
+#### Language Server Integration: Real LSP Implementation + AST Analysis
 
 **Implemented** ([`lsp/clangd.py`](../components/patchagent/patchagent/lsp/clangd.py)):
 - Full JSON-RPC communication with clangd
 - Standard LSP methods: `textDocument/definition`, `textDocument/hover`
 - Proper LSP lifecycle management (initialize, shutdown)
 
-**This is genuinely sophisticated** - unlike the simplified academic concepts, the LSP integration is production-quality.
+**Tree-sitter Integration for Java** ([`lsp/java.py`](../components/patchagent/patchagent/lsp/java.py)):
+```python
+class TreeSitterJavaParser:
+    def __init__(self, file_path: Path):
+        self.parser_language = Language(tree_sitter_java.language())
+        self.parser = Parser(self.parser_language)
+
+    def get_symbol_source(self, symbol_name: str, line: int) -> str:
+        # Queries for method_declaration, constructor_declaration, field_declaration
+        method_declaration_query = self.parser_language.query("""(method_declaration) @func_decl""")
+```
+
+**Clang AST Analysis for C/C++** ([`clike/proxy/internal.py`](../components/patchagent/patchagent/agent/clike/proxy/internal.py#L85-L97)):
+```python
+# Uses clang.cindex for precise symbol location
+index = clang.cindex.Index.create()
+tu = index.parse(realpath)
+for token in tu.get_tokens(extent=tu.cursor.extent):
+    if token.kind.name == "IDENTIFIER" and token.spelling == symbol:
+        for loc in task.builder.language_server.find_definition(Path(relpath), token.location.line, token.location.column):
+            location_set.add(loc)
+```
+
+**This actually EXCEEDS the paper's sophistication** - the implementation uses multiple AST analysis techniques:
+- **LSP integration** for real-time language server features
+- **Tree-sitter** for Java structural analysis
+- **Clang AST** for precise C/C++ token-level analysis
 
 #### Counterexample System: Basic Collection
 
