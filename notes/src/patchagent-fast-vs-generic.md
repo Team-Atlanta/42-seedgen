@@ -6,6 +6,32 @@ The PatchAgent employs a **dual-mode patching strategy** to balance between thor
 
 ## Workflow for Each Incoming Crash
 
+```mermaid
+graph TD
+    A[Incoming Crash] --> B{New Bug Cluster?}
+
+    B -->|Yes| C[3x Generic Mode<br/>Priority 8-10]
+    B -->|No| D[1x Fast Mode<br/>Priority 3-7]
+
+    C --> E[Patch Queue]
+    D --> E
+
+    E --> F[Process Message +<br/>Auto-enqueue Fast Fallback<br/>Priority 0]
+
+    F --> G{Mode Execution}
+
+    G -->|Generic| H[32 Config<br/>Grid Search]
+    G -->|Fast| I[Single Random<br/>Config]
+
+    H --> J[Patch Result]
+    I --> J
+
+    style A fill:#e1f5fe
+    style B fill:#fff3e0
+    style E fill:#fce4ec
+    style J fill:#c8e6c9
+```
+
 ### 1. Triage Phase
 ([`components/triage/task_handler.py#L543-L552`](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/triage/task_handler.py#L543))
 
