@@ -3,16 +3,32 @@
 ## Overview
 
 The [local copy of blog](blog.md) provides the overview of the 42-b3yond-6ug team's CRS (in section "About 42-b3yond-6ug").
-According to the blog, its main component is a traditional fuzzing pipeline, with LLMs assisting on the following components:
 
-- [Seedgen Component](seedgen.md) - LLM-powered seed generation with multiple strategies
-  - [Full Mode Deep Dive](seedgen-fullmode.md) - Compiler instrumentation and dynamic analysis for C/C++
-  - [Mini Mode Deep Dive](seedgen-minimode.md) - Lightweight static analysis for all languages
-  - [MCP Mode Deep Dive](seedgen-mcpmode.md) - Model Context Protocol for deep code analysis (currently enabled)
-  - [Codex Mode Deep Dive](seedgen-codexmode.md) - Autonomous codebase exploration via external CLI tool (not used in competition)
-- [Corpus Grabber Component](corpus_grabber.md) - Intelligent corpus acquisition with two-tier selection strategy
-- [Patch Agent Component](patch_agent.md)
-- [SARIF Component](sarif.md)
+The CRS consists of three main components:
+
+## 1. Bug Finding
+A comprehensive bug discovery pipeline with multiple complementary approaches:
+
+- **[Fuzzing Components](fuzzing.md)** - Core fuzzing engines
+  - [BandFuzz](bandfuzz.md) - Advanced ensemble fuzzing framework
+  - [PrimeFuzz](primefuzz.md) - Prioritized fuzzing approach
+  - [Directed Fuzzing](directed.md) - Target-specific fuzzing with AFL++ allowlist & Jazzer
+- **[Seed Generation](seedgen.md)** - LLM-powered seed generation with multiple strategies
+  - [Full Mode](seedgen-fullmode.md) - Compiler instrumentation and dynamic analysis for C/C++
+  - [Mini Mode](seedgen-minimode.md) - Lightweight static analysis for all languages
+  - [MCP Mode](seedgen-mcpmode.md) - Model Context Protocol for deep code analysis (currently enabled)
+  - [Codex Mode](seedgen-codexmode.md) - Autonomous codebase exploration (not used in competition)
+- **[Analysis Components](analysis.md)** - Bug analysis and corpus optimization
+  - [Triage Component](triage.md) - Bug deduplication, clustering, and prioritization
+  - [Slice Analysis](slice.md) & [JavaSlicer](javaslicer.md) - Program slicing for analysis
+  - [Cmin++](cminplusplus.md) - Corpus minimization
+- **[Corpus Management](corpus_grabber.md)** - Intelligent corpus acquisition with two-tier selection strategy
+
+## 2. Patch Generation
+- [Patch Agent Component](patch_agent.md) - LLM-powered automated patch generation
+
+## 3. Report Processing
+- [SARIF Component](sarif.md) - Static analysis report validation and processing
 
 Besides:
 - A [tentative doc](./how-seeds-used.md) recording how seeds are used in fuzzers.
