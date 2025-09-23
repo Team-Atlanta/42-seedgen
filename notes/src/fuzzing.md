@@ -12,14 +12,15 @@ The CRS employs three distinct fuzzing components that work together to find vul
 
 | Aspect | BandFuzz | PrimeFuzz | Directed Fuzzing |
 |--------|----------|-----------|------------------|
-| **Mode Support** | Full only | Full and Delta | Delta only |
+| **Mode Support** | Full and Delta | Full and Delta | Delta only |
 | **Java Support** | ❌ Explicitly skips ([builder.go#L318](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/builder.go#L318)) | ✅ Full support via Jazzer | ✅ Via `javadirected` component |
 | **Fuzzer Engines** | AFL++ only (LibFuzzer stub not implemented) | LibFuzzer, Jazzer | AFL++ (C/C++), Jazzer (Java) |
 | **Execution Mode** | Epoch-based (configurable: 10min default, 15min prod, 30s dev) | Continuous long-running | Continuous until cancelled |
 | **Termination** | After each epoch, new fuzzlet selected | Runs indefinitely | Runs until task cancelled |
-| **Seed Sync** | After epoch → Cmin queue → DB | Initial pull only from DB | Every 10 minutes from Redis |
-| **Corpus Management** | Batched (1024 seeds or 1min) → cmin_queue | OSS-Fuzz internal management | Active sync via SeedSyncer |
+| **Seed Sync** | After epoch → Cmin queue → DB | Initial pull + runtime seedgen polling | Every 10 minutes from Redis |
+| **Corpus Management** | Batched (1024 seeds or 1min) → cmin_queue | OSS-Fuzz internal + seedgen integration | Active sync via SeedSyncer |
 | **Resource Allocation** | Factor-based scoring (Task, Sanitizer weights) | OSS-Fuzz resource management | Master/slaves for C/C++, replicas for Java |
+| **Sanitizers (C/C++)** | Multi-sanitizer from project.yaml (default: ASAN) | ASAN only (reads project.yaml but doesn't use it) | ASAN only (hardcoded) |
 | **Primary Use Case** | Broad exploration with resource limits | Deep continuous fuzzing | Targeted delta fuzzing |
 
 ## Detailed Comparison
@@ -41,6 +42,64 @@ The CRS employs three distinct fuzzing components that work together to find vul
 - **Dual-language support**: C/C++ via AFL++ allowlists, Java via Jazzer selective instrumentation
 - **Implementation**: Two separate services (`directed` for C/C++, `javadirected` for Java)
 - **Common approach**: Both use program slicing to identify and target modified functions
+
+### Sanitizers (C/C++)
+
+**BandFuzz**:
+- **Configuration**: Reads from `project.yaml` `sanitizers` field ([yamlParser.go#L43-48](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/yamlParser.go#L43))
+- **Default**: `["address"]` if not specified or on error ([afl.go#L15](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/afl.go#L15))
+- **Multi-Sanitizer Build Process**:
+  1. Loops through each sanitizer ([afl.go#L26](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/afl.go#L26))
+  2. Creates separate binaries for each sanitizer ([afl.go#L38-45](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/afl.go#L38))
+  3. For each harness×sanitizer combination ([afl.go#L87-103](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/afl.go#L87)):
+     - Uploads artifact ([afl.go#L88](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/afl.go#L88))
+     - Creates fuzzlet entry ([afl.go#L96](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/afl.go#L96))
+  4. `addFuzzlet` adds to Redis set `b3fuzz:fuzzlets` ([upload.go#L55-72](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/upload.go#L55))
+- **Scheduling Weights**: ASAN=5, UBSAN=1, MSAN=1 ([simpleFactors.go#L37-52](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/scheduler/simpleFactors.go#L37))
+- **Result**: Creates N×M fuzzlets (N harnesses × M sanitizers) all stored in Redis
+- **Support**: address, undefined, memory (from OSS-Fuzz project.yaml)
+
+**PrimeFuzz**:
+- **Configuration**: Reads from `project.yaml` but doesn't use it ([fuzzing_runner.py#L1342-1345](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/primefuzz/modules/fuzzing_runner.py#L1342))
+- **Implementation**: Always uses default ASAN only
+- **Build Strategy**: Single build without `--sanitizer` flag ([fuzzing_runner.py#L1383-1389](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/primefuzz/modules/fuzzing_runner.py#L1383))
+- **Support**: ASAN only in practice (despite reading multi-sanitizer config)
+
+**Directed Fuzzing**:
+- **Configuration**: Hardcoded to `"address"` sanitizer only ([daemon.py#L342](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/daemon.py#L342))
+- **Build Strategy**: AFL builds with ASAN only ([fuzzer_runner.py#L151](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/modules/fuzzer_runner.py#L151))
+- **Runtime**: Sets `SANITIZER=address` environment variable ([fuzzer_runner.py#L192](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/modules/fuzzer_runner.py#L192))
+- **Support**: ASAN only (no multi-sanitizer support)
+
+#### BandFuzz Multi-Sanitizer Implementation Flow
+
+Example: Project with 2 harnesses and 3 sanitizers = 6 fuzzlets created:
+```go
+// afl.go - buildAflArtifacts()
+supportedSanitizers := ["address", "undefined", "memory"]  // From project.yaml
+for _, sanitizer := range supportedSanitizers {            // L26: Loop each sanitizer
+    // Build binaries with this sanitizer
+    artifacts := b.compile_with_retry(ctx, isolatedDetails, buildConfig)
+
+    for idx, harness := range harnesses {               // L87: Loop each harness
+        // Upload artifact for this harness×sanitizer combo
+        uploadPath := b.uploadArtifact(ctx, harness, taskId, sanitizer, "afl", artifacts[idx])
+
+        // Create fuzzlet in Redis - L96 calls addFuzzlet()
+        b.addFuzzlet(ctx, taskId, harness, sanitizer, "afl", uploadPath)
+    }
+}
+
+// upload.go - addFuzzlet() creates fuzzlet entry
+fuzzlet := types.Fuzzlet{
+    TaskId:       taskId,
+    Harness:      harness,      // e.g., "fuzz_parser"
+    Sanitizer:    sanitizer,     // e.g., "address", "undefined", or "memory"
+    FuzzEngine:   engine,
+    ArtifactPath: artifactPath,
+}
+b.redisClient.SAdd(ctx, "b3fuzz:fuzzlets", fuzzletJSON)  // L70: Add to Redis set
+```
 
 ### Fuzzer Engines
 
@@ -102,10 +161,16 @@ Continuous with periodic sync:
 - Seeds persist across epochs via database
 
 **PrimeFuzz**:
-- **One-time initial pull** ([fuzzing_runner.py#L525](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/primefuzz/modules/fuzzing_runner.py#L525))
-- Uses `db_manager.get_selected_seeds_corpus()`
-- No active synchronization during runtime
-- Relies on OSS-Fuzz internal corpus management
+- **Initial pull + runtime seedgen polling**
+  - Initial: Pulls existing seeds via `db_manager.get_selected_seeds_corpus()` at startup ([fuzzing_runner.py#L525](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/primefuzz/modules/fuzzing_runner.py#L525))
+  - Runtime Seedgen Polling:
+    - Polls database every 60s for new seedgen-generated seeds ([fuzzing_runner.py#L1076](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/primefuzz/modules/fuzzing_runner.py#L1076))
+    - Creates `{harness}_seed_corpus.zip` for OSS-Fuzz consumption ([fuzzing_runner.py#L660](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/primefuzz/modules/fuzzing_runner.py#L660))
+    - **Fork Strategy** (`fork_on_seedgen=True` default):
+      - Starts NEW fuzzer instance with seedgen corpus ([fuzzing_runner.py#L802-812](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/primefuzz/modules/fuzzing_runner.py#L802))
+      - Original fuzzer continues unchanged (does NOT receive new seeds)
+    - **Merge Strategy** (`merge_on_seedgen=True` default):
+      - Combines existing corpus with seedgen seeds for the forked fuzzer only ([fuzzing_runner.py#L635-646](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/primefuzz/modules/fuzzing_runner.py#L635))
 
 **Directed Fuzzing**:
 - **Periodic synchronization** ([seed_syncer.py#L16](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/modules/seed_syncer.py#L16))
@@ -113,25 +178,20 @@ Continuous with periodic sync:
 - Pulls from `cmin:{task_id}:{harness}` keys ([seed_syncer.py#L72](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/modules/seed_syncer.py#L72))
 - Seeds shared across AFL++ instances via sync_dir ([seed_syncer.py#L63](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/modules/seed_syncer.py#L63))
 
-### Resource Management
+### Internal Resource Scheduling
 
-**BandFuzz**:
-- **Factor-based scoring** ([pick.go#L29-58](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/scheduler/pick.go#L29))
+**BandFuzz - Factor-Based Scoring**:
+- **Fuzzlet selection** every epoch using weighted scoring ([pick.go#L29-58](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/scheduler/pick.go#L29)):
   - Task Factor: 1/num_fuzzlets_in_task ([simpleFactors.go#L11-31](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/scheduler/simpleFactors.go#L11))
   - Sanitizer Factor: ASAN=5, UBSAN=1, MSAN=1 ([simpleFactors.go#L37-52](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/scheduler/simpleFactors.go#L37))
-- **Sanitizer allocation** ([afl.go#L26-108](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/afl.go#L26))
-  - Builds separate binaries per sanitizer
-  - Creates fuzzlet for each harness×sanitizer combination ([upload.go#L55-73](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/upload.go#L55))
+- **Build strategy**: Separate binaries per sanitizer, creating fuzzlet for each harness×sanitizer combination
 
-**PrimeFuzz**:
-- Delegates to OSS-Fuzz infrastructure
-- No custom resource management
-- Runs as configured in OSS-Fuzz project.yaml
+**PrimeFuzz - OSS-Fuzz Delegation**:
+- No custom scheduling, relies on OSS-Fuzz infrastructure
 
-**Directed Fuzzing**:
-- AFL++ master/slave distribution
-- Default 4 slaves per harness ([daemon.py#L354](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/daemon.py#L354))
-- Configurable via AIXCC_AFL_SLAVE_NUM environment variable
+**Directed - Master/Slave Distribution**:
+- C/C++: AFL++ with 1 master + 4 slaves (configurable via AIXCC_AFL_SLAVE_NUM)
+- Java: Jazzer with selective instrumentation
 
 ## Architectural Insights
 
@@ -150,9 +210,18 @@ The three components are **complementary, not redundant**:
    - Strength: Leverages full OSS-Fuzz capabilities
 
 3. **Directed** targets code changes:
-   - Best for: Delta fuzzing after patches
+   - Best for: Delta fuzzing after patches (**Delta mode ONLY**)
+   - Explicitly rejects full mode tasks ([daemon.py#L154-157](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/daemon.py#L154))
    - Focus: Modified functions in both C/C++ and Java
    - Strength: Efficient vulnerability discovery in changes using slicing and selective instrumentation
+
+### Delta Mode Implementation Details
+
+**Patch Application Process**:
+- Delta tasks include a `Diff` field containing Git-style patches (.patch or .diff files)
+- BandFuzz: Applies patches via `patch -p1` command ([download.go#L161](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/download.go#L161))
+- Directed: Uses PatchManager to identify modified functions ([daemon.py#L190](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/daemon.py#L190))
+- Patches are applied to the focus repository after extraction
 
 ### Seed Flow Architecture
 
@@ -180,208 +249,87 @@ graph LR
    - PrimeFuzz: Long-running trusts OSS-Fuzz management
    - Directed: Needs latest seeds for targeted fuzzing
 
-3. **Resource efficiency trade-offs**:
+3. **Sanitizer strategy differences**:
+   - BandFuzz: TRUE multi-sanitizer with separate binaries and weighted scheduling
+   - PrimeFuzz: ASAN-only despite reading multi-sanitizer config
+   - Directed: ASAN-only hardcoded for speed in delta fuzzing
+
+4. **Sanitizer Implementation Gap**:
+   - Only BandFuzz actually implements multi-sanitizer fuzzing via fuzzlet creation
+   - PrimeFuzz reads sanitizer config but doesn't use it (possible TODO/incomplete feature)
+   - This means less sanitizer diversity than the configuration suggests
+
+5. **Resource efficiency trade-offs**:
    - BandFuzz: Higher overhead from restarts, better diversity
    - PrimeFuzz: Lower overhead, deeper exploration
    - Directed: Focused resources on likely vulnerable code
 
 ## Computing Resource Assignment
 
-### Overall Resource Allocation Strategy
+### Deployment Configuration
 
-#### Task Mode Distribution
+| Component | Type | Replicas | CPU/Pod | Scaling | Mode Support |
+|-----------|------|----------|---------|---------|--------------|
+| **BandFuzz** | Deployment | 0-24* | 30 | Static | Full and Delta |
+| **PrimeFuzz** | Deployment | 8-16 | 8-16 | Dynamic (KEDA) | Full & Delta |
+| **Directed (C/C++)** | ScaledJob | 0-8 | 30 | Dynamic (KEDA) | Delta only |
+| **Directed (Java)** | Deployment | 2 | 4-8 | Static | Delta only |
 
-**Full Mode Tasks**:
-- **Components activated**: PrimeFuzz + BandFuzz (configurable)
-- **Resource allocation**:
-  - PrimeFuzz: 8-16 pods × 8-16 CPUs = 64-256 CPUs total
-  - BandFuzz: Environment-dependent (see below)
-- **Queue routing**: Broadcast to all queues, both PrimeFuzz and BandFuzz can process
+*Environment-specific: Production=24, Test=4, Dev=1, Default=0
 
-**Delta Mode Tasks**:
-- **Components activated**: PrimeFuzz + Directed Fuzzing
-- **Resource allocation**:
-  - PrimeFuzz: 8-16 pods × 8-16 CPUs = 64-256 CPUs
-  - Directed (C/C++): 0-8 jobs × 30 CPUs = 0-240 CPUs
-  - Directed (Java): 2 pods × 4-8 CPUs = 8-16 CPUs
-  - **Total**: Up to 512 CPUs for delta mode
-- **Queue routing**:
-  - PrimeFuzz: Processes via `prime_fuzzing_queue`
-  - Directed: Processes via `directed_fuzzing_queue` (C/C++) and `java_directed_fuzzing_queue` (Java)
+### Resource Allocation by Task Mode (Production)
 
-#### BandFuzz Environment-Specific Configuration
+**Full Mode**:
+- BandFuzz: 720 CPUs (24 pods × 30 CPUs) - processes full mode tasks ([download.go#L49](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/download.go#L49))
+- PrimeFuzz: 64-256 CPUs (8-16 pods × 8-16 CPUs) - accepts all task types
+- Directed: 0 CPUs (not activated for full mode)
+- **Total**: 784-976 CPUs
 
-**Critical Finding**: BandFuzz replica count varies by environment!
+**Delta Mode**:
+- BandFuzz: 720 CPUs (24 pods × 30 CPUs) - also processes delta tasks ([download.go#L49](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/builder/download.go#L49))
+- PrimeFuzz: 64-256 CPUs (8-16 pods × 8-16 CPUs) - continues for all languages
+- Directed: Language-specific activation
+  - C/C++ projects: 0-240 CPUs (0-8 jobs × 30 CPUs) via ScaledJob ([daemon.py#L422](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/daemon.py#L422))
+  - Java projects: 8-16 CPUs (2 pods × 4-8 CPUs) via separate deployment
+  - Note: Only one type launches per task based on project language ([daemon.py#L170-171](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/daemon.py#L170))
+- **Total**: 792-1232 CPUs (max theoretical, actual depends on language)
 
-| Environment | BandFuzz Replicas | CPU Allocation | Source |
-|-------------|------------------|----------------|---------|
-| **Production** | 24 pods | 720 CPUs (24×30) | [values.prod.yaml#L125](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/values.prod.yaml#L125) |
-| **Test** | 4 pods | 120 CPUs (4×30) | [values.test.yaml#L115](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/values.test.yaml#L115) |
-| **Development** | 1 pod | 30 CPUs | [values.dev.yaml#L126](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/values.dev.yaml#L126) |
-| **Base Chart** | 0 pods | 0 CPUs (disabled) | [charts/bandfuzz/values.yaml#L5](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/charts/bandfuzz/values.yaml#L5) |
+**Key Insight**: All components accept both full and delta tasks. Directed fuzzing only activates for delta mode tasks that include diff URLs.
 
-#### Resource Sharing Behavior
+### Environment-Specific Configuration
 
-**Key Observations**:
-1. **BandFuzz is environment-dependent**: Production runs 24 pods, base chart has 0
-2. **PrimeFuzz handles both modes**: Runs continuously for all task types
-3. **Directed is delta-only**: Spawns jobs/pods only when delta tasks arrive
-4. **Competition deployment can enable BandFuzz**: Using appropriate values file
+**BandFuzz Environment Settings**:
+- Production: 24 pods ([values.prod.yaml#L125](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/values.prod.yaml#L125))
+- Test: 4 pods ([values.test.yaml#L115](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/values.test.yaml#L115))
+- Development: 1 pod ([values.dev.yaml#L126](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/values.dev.yaml#L126))
+- Base chart default: 0 pods ([values.yaml#L5](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/charts/bandfuzz/values.yaml#L5))
 
-**Actual Resource Usage Pattern (Production)**:
-```
-Full Mode:  PrimeFuzz (64-256 CPUs) + BandFuzz (720 CPUs) = 784-976 CPUs
-Delta Mode: PrimeFuzz (64-256 CPUs) + BandFuzz (720 CPUs) + Directed (8-256 CPUs) = 792-1232 CPUs
-```
+### Key Resource Management Insights
 
-**Why This Allocation Strategy**:
-- **Full mode gets massive resources in production**: Both PrimeFuzz and BandFuzz run
-- **Delta mode adds directed fuzzing**: All three components active
-- **BandFuzz can be toggled**: Environment-specific values allow dynamic enablement
-- **Competition flexibility**: Can adjust based on available cluster resources
+1. **Environment-Based Scaling Strategy**:
+   - BandFuzz scales from 0 to 24 pods via Helm deployment values
+   - PrimeFuzz uses KEDA for dynamic scaling (8-16 replicas)
+   - Directed uses KEDA ScaledJob for on-demand job creation
 
-### Resource Allocation Overview
+2. **Task Mode Distribution**:
+   - **Full Mode**: BandFuzz + PrimeFuzz (both accept full and delta tasks)
+   - **Delta Mode**: All three components active
+     - BandFuzz: Applies patches and fuzzes
+     - PrimeFuzz: Applies patches and fuzzes (may fork on seedgen)
+     - Directed: ONLY accepts delta tasks, performs slicing-guided fuzzing
+   - No special resource allocation per mode - components self-select tasks
 
-| Component | Deployment Type | Replicas | CPU Request | CPU Limit | Memory | Scaling Type | Scaling Mechanism |
-|-----------|----------------|----------|-------------|-----------|---------|--------------|-------------------|
-| **BandFuzz** | Deployment | 0-24 (env-dependent) | 30 CPUs | - | - | **Static** | None (configured via Helm) |
-| **PrimeFuzz** | Deployment | 2 (base) | 8 CPUs | 16 CPUs | 16Gi | **Dynamic** | KEDA ScaledObject (8-16 replicas) |
-| **Directed** | Mixed | See below | Varies | Varies | Varies | **Dynamic** | See below |
+3. **Dynamic vs Static Trade-offs**:
+   - Static (BandFuzz): Predictable capacity, no scaling overhead
+   - Dynamic (PrimeFuzz/Directed): Efficient resource usage, responds to load
+   - KEDA cooldown periods (300s) prevent thrashing
 
-**Directed Fuzzing Resource Details**:
-- **C/C++**: ScaledJob, 0-8 jobs, 30 CPUs each, KEDA ScaledJob
-- **Java**: Deployment, 2 replicas, 4-8 CPUs each, KEDA ScaledObject
+4. **Autoscaling Mechanisms**:
+   - PrimeFuzz: Scales based on Docker-in-Docker container load ([scaled_object.yaml#L9-18](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/charts/primefuzz/templates/scaled_object.yaml#L9))
+   - Directed C/C++: Scales based on queue length ([scaled_job.yaml#L7-10](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/charts/directed/templates/scaled_job.yaml#L7))
+   - Directed Java: Fixed 2 replicas (no autoscaling)
 
-### Key Resource Management Features
-
-#### 1. Static vs Dynamic Allocation
-
-**BandFuzz - Static (Environment-Configurable)**:
-- Static deployment with environment-specific replica counts
-  - Production: 24 pods ([values.prod.yaml#L125](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/values.prod.yaml#L125))
-  - Test: 4 pods ([values.test.yaml#L115](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/values.test.yaml#L115))
-  - Development: 1 pod ([values.dev.yaml#L126](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/values.dev.yaml#L126))
-  - Base chart default: 0 pods ([values.yaml#L5](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/charts/bandfuzz/values.yaml#L5))
-- Each pod: 30 CPUs request, 28 cores for fuzzing
-- No autoscaling (fixed replicas per environment)
-
-**PrimeFuzz - Dynamic Scaling**:
-- Base: 2 replicas, scales to 8-16 based on load ([scaled_object.yaml#L11-12](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/charts/primefuzz/templates/scaled_object.yaml#L11))
-- Scaling trigger: Docker-in-Docker container load metrics
-- Resource range: 16-256 total CPUs (2-16 pods × 8-16 CPUs)
-- Memory: 16Gi per pod
-
-**Directed Fuzzing - Two Components**:
-
-*C/C++ (Job-Based Scaling)*:
-- ScaledJob: Creates 0-8 job instances on demand ([scaled_job.yaml#L10](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/charts/directed/templates/scaled_job.yaml#L10))
-- Scaling trigger: Queue length of `directed_fuzzing_queue`
-- Each job: 30 CPUs (28 for AFL++ slaves via `AIXCC_AFL_SLAVE_NUM`)
-- Jobs auto-terminate after processing (TTL: 300s)
-- Skips JVM projects ([daemon.py#L170-172](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/directed/src/daemon/daemon.py#L170))
-
-*Java (Deployment-Based)*:
-- Uses PrimeFuzz image with `DIRECTED_MODE=True` environment variable
-- Queue: `java_directed_fuzzing_queue` ([deployment.yaml#L63](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/charts/javadirected/templates/deployment.yaml#L63))
-- 2 replicas with 4-8 CPU cores each
-- Uses Java slicer (`javaslice:task:` Redis keys) for selective instrumentation
-- Jazzer with targeted fuzzing based on slicing results
-
-#### 2. Full Mode vs Delta Mode Resources
-
-**Important Finding**: No resource differentiation between modes!
-
-Both full and delta tasks receive:
-- Same CPU/memory allocations
-- Same initial queue broadcast
-- Same scaling policies
-
-**Practical Differences**:
-- **Task Broadcasting**: All tasks sent to all fuzzing queues via TaskBroadcastExchange ([task_routine.go#L118-126](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/scheduler/service/task_routine.go#L118))
-- **Component Self-Selection**:
-  - BandFuzz: Would process full mode C/C++ only (but disabled)
-  - PrimeFuzz: Accepts both full and delta tasks, all languages
-  - Directed: Only processes delta tasks that contain diff URLs
-- **Queue Assignment** ([initializer.go#L41-44](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/scheduler/internal/messaging/initializer.go#L41)):
-  ```go
-  taskBroadcastGroup = []string{
-      PrimeFuzzingQueue,
-      GeneralFuzzingQueue,  // BandFuzz
-      DirectedFuzzingQueue,
-  }
-  ```
-
-#### 3. KEDA Autoscaling Configuration
-
-**PrimeFuzz Scaling** ([scaled_object.yaml#L9-18](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/charts/primefuzz/templates/scaled_object.yaml#L9)):
-```yaml
-pollingInterval: 60        # Check every 60 seconds
-cooldownPeriod: 300        # Wait 5 minutes before scaling down
-minReplicaCount: 8         # Minimum replicas (max_concurrent)
-maxReplicaCount: 16        # Maximum replicas (2x max_concurrent)
-triggers:
-  - type: metrics-api
-    url: "http://dind-prime-headless:8000/load"
-    valueLocation: 'num_requested'
-```
-
-**Directed Scaling** ([scaled_job.yaml#L7-10](https://github.com/Team-Atlanta/42-afc-crs/blob/main/deployment/crs-k8s/b3yond-crs/charts/directed/templates/scaled_job.yaml#L7)):
-```yaml
-pollingInterval: 60
-maxReplicaCount: 8
-triggers:
-  - type: metrics-api
-    url: "http://scheduler:8080/queue?queue=directed_fuzzing_queue"
-    valueLocation: 'length'
-```
-
-#### 4. Resource Utilization Analysis
-
-**Theoretical Maximum Resources (Production)**:
-- BandFuzz: 720 CPUs (24 pods × 30 CPUs)
-- PrimeFuzz: 256 CPUs (16 pods × 16 CPU limit)
-- Directed (C/C++): 240 CPUs (8 jobs × 30 CPUs)
-- Directed (Java): 16 CPUs (2 pods × 8 CPU limit)
-- **Total**: Up to 1232 CPUs at peak
-
-**Actual Utilization Strategy**:
-- Relies on non-overlapping peak loads
-- KEDA prevents over-provisioning
-- Jobs terminate quickly (Directed)
-- Cooldown periods prevent thrashing
-
-#### 5. Node Affinity and Distribution
-
-All fuzzing components share:
-- Node selector: `b3yond.org/role: user`
-- Pod anti-affinity: Prevents co-location on same node
-- Tolerations for dedicated fuzzing nodes
-- Shared PVC: `/crs` mount for artifacts
-
-### Resource Management Insights
-
-1. **BandFuzz Environment-Configurable**:
-   - Production runs 24 pods (720 CPUs total)
-   - Can be disabled/enabled via Helm values
-   - Provides massive C/C++ fuzzing capacity when enabled
-
-2. **Dynamic Scaling Advantages**:
-   - PrimeFuzz: Responds to container load
-   - Directed: Spawns only for delta tasks
-   - Efficient resource usage during low activity
-
-3. **Inefficient Task Broadcasting**:
-   - All tasks sent to all queues
-   - Components must filter irrelevant tasks
-   - Could optimize with routing keys by language/type
-
-4. **Resource Oversubscription Design**:
-   - Max 1232 CPUs in production (with all components enabled)
-   - Assumes staggered peak loads
-   - KEDA helps manage actual allocation for dynamic components
-   - BandFuzz provides fixed baseline capacity
-
-5. **No Delta Mode Optimization**:
-   - Delta tasks don't get special resources
-   - Same allocation as full mode
-   - Only difference is component selection
+5. **Mode Acceptance Patterns**:
+   - BandFuzz and PrimeFuzz: Accept both full and delta tasks without filtering
+   - Directed Fuzzing: Explicitly filters for delta mode only
+   - Delta mode identified by presence of `Diff` field in task message
