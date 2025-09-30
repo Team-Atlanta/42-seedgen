@@ -724,19 +724,38 @@ The `.summary` property is [injected into user prompt](https://github.com/Team-A
 # Gaming Strategy
 **Q:** What bundling/submission strategies are proposed for maximizing scoring?
 
-**A:** _[Your answer here]_
+**A:** PoV-centric patch submission (no no-PoV patches) with LLM-first SARIF validation.
+
+**Key Strategies**:
+- **Patches require confirmed PoVs**: Only submit patches for [BugProfileStatus.status == passed](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/submitter/workers.py#L190-L211), [PatchTask mandates pocs parameter](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/patchagent/patchagent/task.py#L16-L29)
+- **LLM-first SARIF validation**: Java uses [pure MCP Agent assessment](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/sarif/src/tasks.py#L88-L145) with no empirical validation; C/C++ uses [two-phase approach](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/sarif/src/checkers/seeds.py#L124-L377) (preliminary LLM check → opportunistic crash correlation)
 
 ---
 
 **Q:** How is submission timing optimized by CRS/module design?
 
-**A:** _[Your answer here]_
+**A:** No timing-based gamesmanship - continuous ASAP submission without strategic timing optimization.
 
 ---
 
 **Q:** How are false positives filtered before submission for scoring? (accuracy multiplier estimation, PoV validation, patch testing)
 
-**A:** _[Your answer here]_
+**A:** Multi-layer validation pipeline with conservative deduplication to protect accuracy multiplier.
+
+**PoV Filtering**:
+- [Triage reproduction](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/triage/task_handler.py#L436-L446) → [Pentuple signature deduplication](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/triage/task_handler.py#L436-L446) → [Cluster-based deduplication](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/triage/task_handler.py#L491-L495) (ClusterFuzz 80% similarity or Codex AI 100% confidence)
+- [One representative per cluster submitted](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/submitter/workers.py#L30-L75) (smallest bug_profile_id)
+
+**Patch Filtering**:
+- [Format validation](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/patchagent/patchagent/builder/builder.py#L69-L79) → [Build verification](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/patchagent/patchagent/task.py#L89-L94) → [PoC replay testing](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/patchagent/patchagent/task.py#L96-L104)
+- [Only submit for confirmed PoVs](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/submitter/workers.py#L190-L211) (status == passed)
+- [Functionality tests NOT implemented](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/patchagent/patchagent/builder/builder.py#L104) - empty stub, always passes
+- **Cross-profile validation**: [Implemented but disabled](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/submitter/workers.py#L106-L150) - reproducer tests patches across bug profiles but results ignored by submitter
+
+**SARIF Filtering**:
+- [LLM-based conservative assessment](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/sarif/src/tasks.py#L88-L145): tri-fold result (correct/incorrect/abstain), up to 20 retry attempts
+- Java: Pure MCP Agent static analysis; C/C++: preliminary check → crash correlation fallback
+- No PoV synthesis, no directed fuzzing (implemented but commented out)
 
 
 # Unique/Interesting Practices
@@ -759,6 +778,53 @@ The `.summary` property is [injected into user prompt](https://github.com/Team-A
 - All POC seeds from OSS-Fuzz
 - Classified using Magika
 - Fallback: grouping by LLM
+
+
+# Impressive Features Summarized
+
+**1. LLM-First SARIF Validation**
+- **Java**: Pure LLM validation via [MCP Agent with tree-sitter tools](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/sarif/src/tasks.py#L88-L145), no empirical crash testing
+- **C/C++**: [Two-phase approach](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/sarif/src/checkers/seeds.py#L124-L377) - preliminary LLM check → opportunistic crash correlation from existing BugProfiles
+- No PoV synthesis, no active directed fuzzing for SARIF validation
+
+**2. One-Time Seed Generation**
+- [Single-shot generation per task](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/seedgen/task_handler.py#L143-L207), no feedback loops or continuous refinement
+- [Pre-built corpus library](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/corpusgrabber/grabber.py#L123-L160) directly used as initial fuzzer corpus
+- Hundreds of prepared seeds immediately available vs. runtime generation
+
+**3. Corpus Grabber Similar to Other Teams**
+- [LLM-enhanced filetype identification](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/corpusgrabber/agent/filetype.py#L34-L54) for corpus selection
+- [Project-specific corpus](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/corpusgrabber/grabber.py#L123-L128) fallback to [filetype-based corpus](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/corpusgrabber/grabber.py#L157-L160)
+- Magika classification for structured inputs
+
+**4. Limited LLM Usage in Design**
+- **No LLM involvement**: Resource scheduling, bug deduplication (rules-based), fuzzing strategy selection, build optimization
+- **LLM only for**: Seed generation ([one-time](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/seedgen/task_handler.py#L464-L470)), patch generation ([iterative](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/patchagent/patchagent/agent/generator.py#L36-L46)), SARIF assessment ([conservative](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/sarif/src/tasks.py#L88-L145))
+- Traditional toolchain with strategic LLM augmentation, not LLM-centric
+
+**5. No Corpus Crawler in Repository**
+- [Crawler script referenced but not released](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/corpusgrabber/README.md#L4): `PoC_crawler.py` missing from codebase
+- No corpus collection source code visible
+- Pre-competition corpus preparation infrastructure hidden
+
+**6. Old-Style Prompt Tricks**
+- **Psychological appeals**: ["ten dollar tip"](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/patchagent/patchagent/agent/clike/prompt.py#L176), ["save thousands of lives"](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/patchagent/patchagent/agent/java/prompt.py#L190) in patch prompts
+- **Self-doubt CoT**: ["CONSIDER YOU MAY BE WRONG", "ACTUALLY RE-EXAMINE"](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/seedgen/seedgen2/graphs/cotbot.py#L20) in seed generation
+- **Ultra-thinking in prompt string**: [Exists in codex mode](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/seedgen/seedgen2/graphs/codexbot.py#L29) but not using extended_thinking parameter (and codex mode [disabled in prod](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/seedgen/task_handler.py#L173))
+
+**7. Various Implemented-But-Disabled Techniques**
+- **Codex wrapper for SeedGen**: [Implemented](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/seedgen/seedgen2/graphs/codexbot.py) but [not enabled in production](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/seedgen/task_handler.py#L173) (only MCP mode active)
+- **Cross-profile patch validation**: [Reproducer fully operational](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/patchagent/reproducer/reproduce.py) but [results ignored by submitter](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/submitter/workers.py#L106-L150)
+- **SARIF directed fuzzing**: [Implemented](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/sarif/src/checkers/directed_fuzzing.py) but commented out due to computational expense
+- **Functional testing**: [Stub only](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/patchagent/patchagent/builder/builder.py#L104), always passes without running project tests
+
+**8. Paper Techniques Replaced by Straightforward Heuristics**
+- **BandFuzz ensemble learning** → [Simple weighted factor scheduling](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/bandfuzz/internal/scheduler/simpleFactors.go#L37-L52) (ASAN=5, MSAN=1, UBSAN=1)
+- **PatchAgent interaction optimization** → [Random counterexample sampling](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/patchagent/patchagent/agent/clike/common.py#L115-L130) (up to 3 random failed patches)
+- **ML-based deduplication** → [Conservative rule-based clustering](https://github.com/Team-Atlanta/42-afc-crs/blob/main/components/triage/dedup/clusterfuzz_dedup.py#L87-L105) (80% stack similarity threshold)
+- **Report purification** → Not implemented, raw sanitizer reports used
+- Strategy: Production reliability over research sophistication
+
 
 # Questions to authors
 - Why don't you use traditional directed fuzzer (e.g. AFLGo?) Do you evaluate
