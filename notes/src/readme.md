@@ -23,6 +23,7 @@ A comprehensive bug discovery pipeline with multiple complementary approaches:
   - [Slice Analysis](slice.md) & [JavaSlicer](javaslicer.md) - Program slicing for analysis
   - [Cmin++](cminplusplus.md) - Corpus minimization
 - **[Corpus Management](corpus_grabber.md)** - Intelligent corpus acquisition with two-tier selection strategy
+- **[Some Questions](some-questions.md)** - Analysis of LLM's role, seed flow, and fuzzer resource scheduling
 
 ## 2. Patch Generation
 - [Patch Agent Component](patch_agent.md) - LLM-powered automated patch generation
