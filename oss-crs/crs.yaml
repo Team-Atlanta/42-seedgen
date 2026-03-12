@@ -1,6 +1,6 @@
 name: seedgen
 type:
-  - seed-generation
+  - bug-finding
 version: "1.0.0"
 docker_registry: ghcr.io/trailofbits/seedgen
 
@@ -28,6 +28,21 @@ target_build_phase:
 crs_run_phase:
   runner:
     dockerfile: oss-crs/dockerfiles/runner.Dockerfile
+
+run:
+  image: seedgen-runner:latest
+  env:
+    - OSS_CRS_LLM_API_URL
+    - OSS_CRS_LLM_API_KEY
+    - TARGET_HARNESS
+    - NUM_SEEDS
+  inputs:
+    - coverage-harness
+    - compile-commands
+    - callgraph
+  outputs:
+    - name: seed
+      type: seed
 
 supported_target:
   mode:
