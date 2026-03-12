@@ -80,37 +80,37 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REPO-01 | TBD | Pending |
-| REPO-02 | TBD | Pending |
-| REPO-03 | TBD | Pending |
-| REPO-04 | TBD | Pending |
-| PREP-01 | TBD | Pending |
-| PREP-02 | TBD | Pending |
-| PREP-03 | TBD | Pending |
-| PREP-04 | TBD | Pending |
-| BLDG-01 | TBD | Pending |
-| BLDG-02 | TBD | Pending |
-| BLDG-03 | TBD | Pending |
-| BLDG-04 | TBD | Pending |
-| RUNF-01 | TBD | Pending |
-| RUNF-02 | TBD | Pending |
-| RUNF-03 | TBD | Pending |
-| RUNF-04 | TBD | Pending |
-| RUNF-05 | TBD | Pending |
-| SEED-01 | TBD | Pending |
-| SEED-02 | TBD | Pending |
-| SEED-03 | TBD | Pending |
-| SEED-04 | TBD | Pending |
-| SEED-05 | TBD | Pending |
-| SEED-06 | TBD | Pending |
-| VALD-01 | TBD | Pending |
-| VALD-02 | TBD | Pending |
+| REPO-01 | Phase 1 | Pending |
+| REPO-02 | Phase 1 | Pending |
+| REPO-03 | Phase 1 | Pending |
+| REPO-04 | Phase 1 | Pending |
+| PREP-01 | Phase 1 | Pending |
+| PREP-02 | Phase 1 | Pending |
+| PREP-03 | Phase 1 | Pending |
+| PREP-04 | Phase 1 | Pending |
+| BLDG-01 | Phase 2 | Pending |
+| BLDG-02 | Phase 2 | Pending |
+| BLDG-03 | Phase 2 | Pending |
+| BLDG-04 | Phase 2 | Pending |
+| RUNF-01 | Phase 3 | Pending |
+| RUNF-02 | Phase 3 | Pending |
+| RUNF-03 | Phase 3 | Pending |
+| RUNF-04 | Phase 3 | Pending |
+| RUNF-05 | Phase 3 | Pending |
+| SEED-01 | Phase 3 | Pending |
+| SEED-02 | Phase 3 | Pending |
+| SEED-03 | Phase 3 | Pending |
+| SEED-04 | Phase 3 | Pending |
+| SEED-05 | Phase 3 | Pending |
+| SEED-06 | Phase 3 | Pending |
+| VALD-01 | Phase 4 | Pending |
+| VALD-02 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 25 total
-- Mapped to phases: 0
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-11*
-*Last updated: 2026-03-11 after initial definition*
+*Last updated: 2026-03-12 after roadmap creation*
