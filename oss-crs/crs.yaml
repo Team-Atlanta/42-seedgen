@@ -1,0 +1,41 @@
+name: seedgen
+type:
+  - seed-generation
+version: "1.0.0"
+docker_registry: ghcr.io/trailofbits/seedgen
+
+prepare_phase:
+  hcl: oss-crs/docker-bake.hcl
+
+target_build_phase:
+  - name: build-coverage
+    dockerfile: oss-crs/dockerfiles/builder-coverage.Dockerfile
+    outputs:
+      - coverage-harness
+
+  - name: build-compile-commands
+    dockerfile: oss-crs/dockerfiles/builder-compile-commands.Dockerfile
+    outputs:
+      - compile-commands
+
+  - name: build-callgraph
+    dockerfile: oss-crs/dockerfiles/builder-callgraph.Dockerfile
+    depends_on:
+      - build-coverage
+    outputs:
+      - callgraph
+
+crs_run_phase:
+  runner:
+    dockerfile: oss-crs/dockerfiles/runner.Dockerfile
+
+supported_target:
+  mode:
+    - full
+  language:
+    - c
+    - c++
+  sanitizer:
+    - address
+  architecture:
+    - x86_64
