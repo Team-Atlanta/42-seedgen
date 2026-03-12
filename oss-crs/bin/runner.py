@@ -95,12 +95,9 @@ def register_seed_dirs():
     log_json("register_seed_dirs_complete")
 
 
-def start_seedd(shared_dir: str) -> subprocess.Popen:
+def start_seedd() -> subprocess.Popen:
     """
     Start SeedD gRPC server as background process and wait for health check.
-
-    Args:
-        shared_dir: Directory for SeedD shared state
 
     Returns:
         Popen object for running SeedD process
@@ -108,11 +105,11 @@ def start_seedd(shared_dir: str) -> subprocess.Popen:
     Raises:
         RuntimeError: If SeedD fails to start or health check timeout
     """
-    log_json("start_seedd", shared_dir=shared_dir)
+    log_json("start_seedd")
 
-    # Start SeedD as subprocess
+    # Start SeedD as subprocess (only -debug flag available)
     proc = subprocess.Popen(
-        ["/usr/local/bin/seedd", "--shared-dir", shared_dir],
+        ["/usr/local/bin/seedd"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
@@ -229,7 +226,7 @@ def main():
 
     # Start SeedD
     try:
-        seedd_proc = start_seedd("/runner/shared")
+        seedd_proc = start_seedd()
     except Exception as e:
         log_json("fatal_error", stage="start_seedd", error=str(e))
         sys.exit(1)
