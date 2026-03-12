@@ -46,8 +46,8 @@ target "seedgen-runtime" {
 
 # Runner image - run phase container
 target "runner" {
-  dockerfile = "dockerfiles/runner.Dockerfile"
-  context = ".."
+  context    = "."
+  dockerfile = "oss-crs/dockerfiles/runner.Dockerfile"
   contexts = {
     seedgen-runtime = "target:seedgen-runtime"
   }

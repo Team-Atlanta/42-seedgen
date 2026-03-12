@@ -91,7 +91,8 @@ def generate_based_on_coverage(
         ]
 
         function_source_list += [f"{target_function_name}(args...){target_function_source}"]
-        uncovered_list += [f"- In function {target_function_name}:\n{'\n\n'.join(target_function_uncovered)}"]
+        uncovered_joined = '\n\n'.join(target_function_uncovered)
+        uncovered_list += [f"- In function {target_function_name}:\n{uncovered_joined}"]
 
     if function_source_list == []:
         logging.info(f"All related functions are fully covered")

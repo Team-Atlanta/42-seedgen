@@ -150,8 +150,7 @@ class GenerationNode:
     """Handles the initial script generation."""
 
     def __call__(self, state: GenerateState):
-        logging.info(f"Starting script generation for prompt: {
-                     state['prompt'][:100]}...")
+        logging.info(f"Starting script generation for prompt: {state['prompt'][:100]}...")
         prompt = state['prompt']
         target_project_dir = state["target_project_dir"]
         model = state['model']
@@ -184,8 +183,7 @@ class ScriptValidationNode:
         run_result = store.run_generator(generator_id)
 
         if not run_result.is_success():
-            logging.error(f"Failed to run generator: {
-                          run_result.get_error_message()}")
+            logging.error(f"Failed to run generator: {run_result.get_error_message()}")
             return {
                 "error_happened": True,
                 "error_message": f"Failed to run generator: {run_result.get_error_message()}",

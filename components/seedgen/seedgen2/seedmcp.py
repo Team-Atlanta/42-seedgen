@@ -172,8 +172,7 @@ class SeedMcpAgent:
 
     def run(self) -> None:
         """Run the seed generation process."""
-        logging.info(f"Running SeedGen2 MCP agent for harness binary: {
-                     self.harness_binary}")
+        logging.info(f"Running SeedGen2 MCP agent for harness binary: {self.harness_binary}")
 
         # Seed generation pipeline
         # 1. Analyze the source code first to get suggestions on data structures and code plans
