@@ -39,11 +39,11 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `oss-crs build-target` runs to completion without errors
   2. Build artifacts (instrumented harness, compile_commands.json, call graph) are submitted and downloadable
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md — Create builder Dockerfiles and scripts (coverage, compile_commands, callgraph)
+- [ ] 02-02-PLAN.md — Verify builder images and human approval
 
 ### Phase 3: Run
 **Goal**: `oss-crs run` command completes successfully with seeds generated
