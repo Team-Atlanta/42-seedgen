@@ -66,10 +66,12 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Full pipeline (prepare -> build-target -> run) completes with afc-freerdp-delta-01 benchmark
   2. Generated seeds demonstrate measurable coverage improvement over empty corpus
-**Plans**: 1 plan
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Create validation scripts for full pipeline execution and coverage comparison
+- [x] 04-00-PLAN.md — Create validation fixtures (mock harness, coverage JSON, sample seeds)
+- [x] 04-01-PLAN.md — Create validation scripts for full pipeline execution and coverage comparison
+- [ ] 04-02-PLAN.md — Gap closure: Add oss-crs dependency and execute full validation (human verification)
 
 ## Progress
 
@@ -81,7 +83,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 1. Prepare | 2/2 | Complete | 2026-03-12 |
 | 2. Build-Target | 2/2 | Complete | 2026-03-12 |
 | 3. Run | 3/3 | Complete | 2026-03-12 |
-| 4. Validation | 0/1 | Not started | - |
+| 4. Validation | 2/3 | In Progress | - |
 
 ---
 *Roadmap created: 2026-03-12*
