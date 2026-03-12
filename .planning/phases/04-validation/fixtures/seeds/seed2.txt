@@ -1,0 +1,6 @@
+<root>
+  <element>test data 2</element>
+  <nested>
+    <item>more coverage</item>
+  </nested>
+</root>
