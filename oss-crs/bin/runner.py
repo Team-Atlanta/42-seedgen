@@ -55,7 +55,7 @@ def download_artifacts():
     for artifact_name, artifact_path in artifacts:
         log_json("downloading_artifact", name=artifact_name, path=artifact_path)
         result = subprocess.run(
-            ["libcrs", "download-build-output", artifact_name, artifact_path],
+            ["libCRS", "download-build-output", artifact_name, artifact_path],
             capture_output=True,
             text=True
         )
@@ -79,7 +79,7 @@ def register_seed_dirs():
 
     # Register fetch directory for existing seeds
     result = subprocess.run(
-        ["libcrs", "register-fetch-dir", "/runner/seeds-in"],
+        ["libCRS", "register-fetch-dir", "/runner/seeds-in"],
         capture_output=True,
         text=True
     )
@@ -90,7 +90,7 @@ def register_seed_dirs():
 
     # Register submit directory for generated seeds
     result = subprocess.run(
-        ["libcrs", "register-submit-dir", "seed", "/runner/seeds-out"],
+        ["libCRS", "register-submit-dir", "seed", "/runner/seeds-out"],
         capture_output=True,
         text=True
     )
