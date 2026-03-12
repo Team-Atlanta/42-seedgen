@@ -12,11 +12,34 @@ import time
 import hashlib
 from typing import Optional
 
+# Add seedgen2 to path and import
+sys.path.insert(0, '/runner')
+from seedgen2.seedgen import SeedGenAgent
+from seedgen2.presets import SeedGen2GenerativeModel
+
 
 def log_json(event: str, **kwargs):
     """Structured JSON logging to stderr."""
     entry = {"event": event, "timestamp": time.time(), **kwargs}
     print(json.dumps(entry), file=sys.stderr, flush=True)
+
+
+def write_seed(seed_data: bytes, output_dir: str) -> str:
+    """
+    Write seed to file with SHA256 hash filename.
+
+    Args:
+        seed_data: Raw seed bytes
+        output_dir: Directory to write seed file
+
+    Returns:
+        Path to written seed file
+    """
+    sha256 = hashlib.sha256(seed_data).hexdigest()
+    path = os.path.join(output_dir, sha256)
+    with open(path, 'wb') as f:
+        f.write(seed_data)
+    return path
 
 
 def download_artifacts():
@@ -140,6 +163,47 @@ def start_seedd(shared_dir: str) -> subprocess.Popen:
     raise RuntimeError(f"SeedD health check timeout after {max_attempts} attempts")
 
 
+def run_seedgen_loop(harness_path: str, project_name: str, num_seeds: int):
+    """
+    Run seedgen pipeline in a loop.
+
+    Args:
+        harness_path: Path to coverage harness binary
+        project_name: Name of target project
+        num_seeds: Target number of seeds to generate
+    """
+    result_dir = "/runner/seeds-out"
+    os.makedirs(result_dir, exist_ok=True)
+
+    iteration = 0
+    while True:
+        iteration += 1
+        log_json("pipeline_start", iteration=iteration)
+
+        agent = SeedGenAgent(
+            result_dir=result_dir,
+            ip_addr="localhost",
+            project_name=project_name,
+            harness_binary=harness_path,
+            gen_model=SeedGen2GenerativeModel()  # Uses OSS_CRS_LLM_API_URL via presets.py
+        )
+
+        try:
+            agent.run()
+            # Count seeds in output directory
+            seed_count = len([f for f in os.listdir(result_dir) if os.path.isfile(os.path.join(result_dir, f))])
+            log_json("pipeline_complete", iteration=iteration, total_seeds=seed_count)
+
+            # Check if we've reached target
+            if seed_count >= num_seeds:
+                log_json("target_reached", total_seeds=seed_count, target=num_seeds)
+                break
+
+        except Exception as e:
+            log_json("pipeline_error", iteration=iteration, error=str(e))
+            time.sleep(5)  # Brief pause on error before retry
+
+
 def main():
     """Main runner entrypoint."""
     log_json("runner_start")
@@ -182,17 +246,36 @@ def main():
             artifacts_ready=True,
             seed_dirs_registered=True)
 
-    # Placeholder loop - Plan 02 will add actual SeedGenAgent calls
-    log_json("entering_wait_loop",
-            message="Waiting for Plan 03-02 to add SeedGenAgent integration")
+    # Determine harness path from artifacts
+    harness_path = os.path.join("/runner/artifacts/coverage-harness", "harness")
+    if not os.path.exists(harness_path):
+        # Try finding any executable in the coverage-harness directory
+        harness_dir = "/runner/artifacts/coverage-harness"
+        executables = [f for f in os.listdir(harness_dir)
+                      if os.path.isfile(os.path.join(harness_dir, f))
+                      and os.access(os.path.join(harness_dir, f), os.X_OK)]
+        if executables:
+            harness_path = os.path.join(harness_dir, executables[0])
+        else:
+            log_json("fatal_error", stage="harness_detection", error="No harness binary found")
+            sys.exit(1)
 
-    iteration = 0
-    while True:
-        iteration += 1
-        log_json("waiting_for_seedgen",
-                iteration=iteration,
-                message="Runner infrastructure ready, seedgen pipeline not yet integrated")
-        time.sleep(60)
+    # Determine project name from TARGET_HARNESS or harness path
+    project_name = target_harness if target_harness else os.path.basename(harness_path)
+
+    log_json("starting_seedgen_loop",
+            harness_path=harness_path,
+            project_name=project_name,
+            target_seeds=num_seeds)
+
+    # Run seedgen pipeline
+    try:
+        run_seedgen_loop(harness_path, project_name, num_seeds)
+    except Exception as e:
+        log_json("fatal_error", stage="run_seedgen_loop", error=str(e))
+        sys.exit(1)
+
+    log_json("runner_complete", message="Seedgen pipeline finished")
 
 
 if __name__ == "__main__":
