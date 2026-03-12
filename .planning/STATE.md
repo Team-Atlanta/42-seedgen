@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 2 context gathered
-last_updated: "2026-03-12T05:08:50.405Z"
-last_activity: 2026-03-12 -- Completed 01-02-PLAN.md
+status: in_progress
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-12T05:26:44.636Z"
+last_activity: 2026-03-12 -- Completed 02-01-PLAN.md
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
   percent: 25
 ---
 
@@ -21,35 +21,35 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-12)
 
 **Core value:** Generate seeds that maximize code coverage through iterative LLM refinement guided by runtime coverage feedback.
-**Current focus:** Phase 1 - Foundation + Prepare
+**Current focus:** Phase 2 - Build-Target
 
 ## Current Position
 
 Phase: 2 of 4 (Build-Target)
-Plan: 0 of 2 in current phase
-Status: Phase 1 complete, ready for Phase 2
-Last activity: 2026-03-12 -- Completed 01-02-PLAN.md
+Plan: 1 of 2 in current phase
+Status: Plan 02-01 complete, ready for Plan 02-02
+Last activity: 2026-03-12 -- Completed 02-01-PLAN.md
 
-Progress: [██░░░░░░░░] 25%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 1.5 min
-- Total execution time: 3 min
+- Total plans completed: 3
+- Average duration: 1.7 min
+- Total execution time: 5 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. Foundation + Prepare | 2/2 | 3 min | 1.5 min |
-| 2. Build-Target | 0/2 | - | - |
+| 2. Build-Target | 1/2 | 2 min | 2 min |
 | 3. Run Phase + Seedgen | 0/3 | - | - |
 | 4. Validation | 0/1 | - | - |
 
 **Recent Trend:**
-- Last 5 plans: 1 min, 2 min
+- Last 5 plans: 1 min, 2 min, 2 min
 - Trend: stable
 
 *Updated after each plan completion*
@@ -58,6 +58,7 @@ Progress: [██░░░░░░░░] 25%
 |------|----------|-------|-------|
 | Phase 01 P01 | 1 min | 2 | 4 |
 | Phase 01 P02 | 2 min | 3 | 3 |
+| Phase 02 P01 | 2 min | 3 | 6 |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ Recent decisions affecting current work:
 - [Phase 01]: Single prepare-base.Dockerfile with named stages referenced by all targets
 - [Phase 01]: Use gcr.io/oss-fuzz-base/base-builder for runtime to maintain LLVM compatibility
 - [Phase 01]: Install binaries to /usr/local/bin, libraries to /usr/local/lib
+- [Phase 02]: Use ARGUS visitors via environment variables rather than manual clang flags
+- [Phase 02]: Merge compile_commands JSON files in builder script, not run phase
+- [Phase 02]: Include llvm-profdata and llvm-cov in coverage output for self-contained analysis
 
 ### Pending Todos
 
@@ -82,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T05:08:50.403Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-build-target/02-CONTEXT.md
+Last session: 2026-03-12T05:26:00Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: .planning/phases/02-build-target/02-01-SUMMARY.md

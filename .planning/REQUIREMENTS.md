@@ -23,10 +23,10 @@ Requirements for initial OSS-CRS integration. Each maps to roadmap phases.
 
 ### Build-Target Phase
 
-- [ ] **BLDG-01**: Coverage builder produces instrumented harness with -fprofile-instr-generate
-- [ ] **BLDG-02**: compile_commands.json builder extracts compilation database
-- [ ] **BLDG-03**: Call graph builder links harness with libcallgraph_rt
-- [ ] **BLDG-04**: All builders export artifacts via libCRS submit-build-output
+- [x] **BLDG-01**: Coverage builder produces instrumented harness with -fprofile-instr-generate
+- [x] **BLDG-02**: compile_commands.json builder extracts compilation database
+- [x] **BLDG-03**: Call graph builder links harness with libcallgraph_rt
+- [x] **BLDG-04**: All builders export artifacts via libCRS submit-build-output
 
 ### Run Phase Infrastructure
 
@@ -88,10 +88,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PREP-02 | Phase 1 | Complete |
 | PREP-03 | Phase 1 | Complete |
 | PREP-04 | Phase 1 | Complete |
-| BLDG-01 | Phase 2 | Pending |
-| BLDG-02 | Phase 2 | Pending |
-| BLDG-03 | Phase 2 | Pending |
-| BLDG-04 | Phase 2 | Pending |
+| BLDG-01 | Phase 2 | Complete |
+| BLDG-02 | Phase 2 | Complete |
+| BLDG-03 | Phase 2 | Complete |
+| BLDG-04 | Phase 2 | Complete |
 | RUNF-01 | Phase 3 | Pending |
 | RUNF-02 | Phase 3 | Pending |
 | RUNF-03 | Phase 3 | Pending |
