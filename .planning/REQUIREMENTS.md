@@ -9,8 +9,8 @@ Requirements for initial OSS-CRS integration. Each maps to roadmap phases.
 
 ### Repository Structure
 
-- [ ] **REPO-01**: crs.yaml defines prepare, build-target, and run phases with correct schema
-- [ ] **REPO-02**: docker-bake.hcl defines targets for building CRS dependency images
+- [x] **REPO-01**: crs.yaml defines prepare, build-target, and run phases with correct schema
+- [x] **REPO-02**: docker-bake.hcl defines targets for building CRS dependency images
 - [ ] **REPO-03**: Dockerfile for each phase (prepare base, builders, runner)
 - [ ] **REPO-04**: Example compose.yaml for local testing with CRSBench target
 
@@ -80,8 +80,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REPO-01 | Phase 1 | Pending |
-| REPO-02 | Phase 1 | Pending |
+| REPO-01 | Phase 1 | Complete |
+| REPO-02 | Phase 1 | Complete |
 | REPO-03 | Phase 1 | Pending |
 | REPO-04 | Phase 1 | Pending |
 | PREP-01 | Phase 1 | Pending |
