@@ -47,8 +47,8 @@ Requirements for initial OSS-CRS integration. Each maps to roadmap phases.
 
 ### Validation
 
-- [ ] **VALD-01**: End-to-end test passes with afc-freerdp-delta-01 benchmark
-- [ ] **VALD-02**: Seeds demonstrate coverage improvement over baseline
+- [x] **VALD-01**: End-to-end test passes with afc-freerdp-delta-01 benchmark
+- [x] **VALD-02**: Seeds demonstrate coverage improvement over baseline
 
 ## v2 Requirements
 
@@ -103,8 +103,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEED-04 | Phase 3 | Complete |
 | SEED-05 | Phase 3 | Complete |
 | SEED-06 | Phase 3 | Complete |
-| VALD-01 | Phase 4 | Pending |
-| VALD-02 | Phase 4 | Pending |
+| VALD-01 | Phase 4 | Complete |
+| VALD-02 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 25 total
