@@ -96,7 +96,7 @@ def register_seed_dirs():
 
 def start_seedd() -> subprocess.Popen:
     """
-    Start SeedD gRPC server as background process and wait for health check.
+    Start SeedD gRPC server as background process and wait for gRPC health check.
 
     Returns:
         Popen object for running SeedD process
@@ -104,6 +104,10 @@ def start_seedd() -> subprocess.Popen:
     Raises:
         RuntimeError: If SeedD fails to start or health check timeout
     """
+    import grpc
+    import grpc_health.v1.health_pb2 as health_pb2
+    import grpc_health.v1.health_pb2_grpc as health_pb2_grpc
+
     log_json("start_seedd")
 
     # Start SeedD as subprocess (only -debug flag available)
@@ -115,41 +119,46 @@ def start_seedd() -> subprocess.Popen:
 
     log_json("seedd_process_started", pid=proc.pid)
 
-    # Health check loop - wait for SeedD to be ready
-    # Using grpc health check via grpc_health.v1.Health/Check
-    max_attempts = 30
+    # Health check loop - wait for gRPC server to be ready
+    max_attempts = 60
     sleep_interval = 1
 
     for attempt in range(1, max_attempts + 1):
+        # Check if process died
+        if proc.poll() is not None:
+            stdout, stderr = proc.communicate()
+            log_json("seedd_died",
+                    returncode=proc.returncode,
+                    stdout=stdout.decode() if stdout else "",
+                    stderr=stderr.decode() if stderr else "")
+            raise RuntimeError(f"SeedD process died with return code {proc.returncode}")
+
+        # Try actual gRPC health check
         try:
-            # Try to connect to SeedD health check endpoint
-            # In production, this would use seedgen2.utils.grpc.SeedD.health_check()
-            # For now, just check if process is alive and give it time to initialize
-            if proc.poll() is not None:
-                # Process died
-                stdout, stderr = proc.communicate()
-                log_json("seedd_died",
-                        returncode=proc.returncode,
-                        stdout=stdout.decode() if stdout else "",
-                        stderr=stderr.decode() if stderr else "")
-                raise RuntimeError(f"SeedD process died with return code {proc.returncode}")
-
-            # Simple health check: process is alive
-            # Real implementation would use gRPC health check here
-            if attempt >= 3:  # Give it a few seconds to initialize
-                log_json("seedd_health_check_passed", attempt=attempt)
-                log_json("seedd_ready", pid=proc.pid)
-                return proc
-
+            channel = grpc.insecure_channel("localhost:9002")
+            health_stub = health_pb2_grpc.HealthStub(channel)
+            health_stub.Check(health_pb2.HealthCheckRequest(), timeout=2)
+            channel.close()
+            log_json("seedd_health_check_passed", attempt=attempt)
+            log_json("seedd_ready", pid=proc.pid)
+            return proc
+        except grpc.RpcError as e:
+            log_json("seedd_health_check_retry", attempt=attempt, error=str(e))
         except Exception as e:
-            log_json("seedd_health_check_failed", attempt=attempt, error=str(e))
+            log_json("seedd_health_check_retry", attempt=attempt, error=str(e))
 
         time.sleep(sleep_interval)
 
-    # Health check timeout
+    # Health check timeout - get SeedD output for debugging
     proc.terminate()
-    log_json("seedd_health_timeout", max_attempts=max_attempts)
-    raise RuntimeError(f"SeedD health check timeout after {max_attempts} attempts")
+    try:
+        stdout, stderr = proc.communicate(timeout=5)
+        log_json("seedd_health_timeout", max_attempts=max_attempts,
+                stdout=stdout.decode() if stdout else "",
+                stderr=stderr.decode() if stderr else "")
+    except:
+        log_json("seedd_health_timeout", max_attempts=max_attempts)
+    raise RuntimeError(f"SeedD gRPC health check timeout after {max_attempts} attempts")
 
 
 def run_seedgen_loop(harness_path: str, project_name: str, num_seeds: int):
