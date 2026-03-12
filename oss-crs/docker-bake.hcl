@@ -43,3 +43,13 @@ target "seedgen-runtime" {
   target     = "runtime"
   tags       = ["seedgen-runtime:latest"]
 }
+
+# Runner image - run phase container
+target "runner" {
+  dockerfile = "dockerfiles/runner.Dockerfile"
+  context = ".."
+  contexts = {
+    seedgen-runtime = "target:seedgen-runtime"
+  }
+  tags = ["seedgen-runner:latest"]
+}
