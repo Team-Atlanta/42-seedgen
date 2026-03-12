@@ -52,12 +52,12 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `oss-crs run` runs to completion without errors
   2. Seeds appear in submission directory (seedgen pipeline executed successfully)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
-- [ ] 03-03: TBD
+- [ ] 03-01-PLAN.md — Create runner Dockerfile and orchestration script (artifact download, SeedD startup, seed directories)
+- [ ] 03-02-PLAN.md — Integrate seedgen2 pipeline and adapt presets.py for OSS-CRS LLM
+- [ ] 03-03-PLAN.md — Update docker-bake.hcl and crs.yaml, build and verify runner image
 
 ### Phase 4: Validation
 **Goal**: End-to-end validation proves seeds improve coverage over baseline
