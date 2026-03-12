@@ -15,7 +15,6 @@ from typing import Optional
 # Add seedgen2 to path and import
 sys.path.insert(0, '/runner')
 from seedgen2.seedgen import SeedGenAgent
-from seedgen2.presets import SeedGen2GenerativeModel
 
 
 def log_json(event: str, **kwargs):
@@ -170,12 +169,15 @@ def run_seedgen_loop(harness_path: str, project_name: str, num_seeds: int):
         iteration += 1
         log_json("pipeline_start", iteration=iteration)
 
+        # Get model name from env (set by compose.yaml) or use default
+        gen_model = os.getenv("SEEDGEN_GENERATIVE_MODEL", "claude-3.5-sonnet")
+
         agent = SeedGenAgent(
             result_dir=result_dir,
             ip_addr="localhost",
             project_name=project_name,
             harness_binary=harness_path,
-            gen_model=SeedGen2GenerativeModel()  # Uses OSS_CRS_LLM_API_URL via presets.py
+            gen_model=gen_model
         )
 
         try:
