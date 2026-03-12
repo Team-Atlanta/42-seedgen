@@ -7,7 +7,8 @@ echo "[builder-callgraph] Starting callgraph build..."
 # Configure ARGUS for callgraph instrumentation
 # AdditionalPassesVisitor adds: -fpass-plugin=/usr/local/lib/SeedMindCFPass.so
 # AdditionalObjectsVisitor links: libcallgraph_rt.a
-export ADD_ADDITIONAL_PASSES=SeedMindCFPass.so
+# NOTE: Must use absolute path - ARGUS find_object doesn't search /usr/local/lib/
+export ADD_ADDITIONAL_PASSES=/usr/local/lib/SeedMindCFPass.so
 export ADD_ADDITIONAL_OBJECTS=/usr/local/lib/libcallgraph_rt.a
 export CC=/usr/local/bin/argus
 export CXX=/usr/local/bin/argus
