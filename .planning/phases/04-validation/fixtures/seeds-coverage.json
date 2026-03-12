@@ -1,0 +1,16 @@
+{
+  "data": [{
+    "totals": {
+      "branches": {
+        "covered": 280,
+        "count": 1200,
+        "percent": 23.33
+      },
+      "functions": {
+        "covered": 78,
+        "count": 200,
+        "percent": 39.0
+      }
+    }
+  }]
+}
