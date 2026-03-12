@@ -1,0 +1,29 @@
+# Seedgen Local Testing Configuration
+# Tests prepare-phase image with verification of all tools
+
+services:
+  # Prepare phase runtime - contains all built tools
+  seedgen-runtime:
+    build:
+      context: ..
+      dockerfile: oss-crs/dockerfiles/prepare-base.Dockerfile
+      target: runtime
+    image: seedgen-runtime:local
+    command: ["sh", "-c", "echo 'Tools available:' && which argus getcov seedd && ls -la /usr/local/lib/"]
+
+  # Verification service - runs tool checks
+  verify-tools:
+    image: seedgen-runtime:local
+    depends_on:
+      seedgen-runtime:
+        condition: service_completed_successfully
+    command: |
+      sh -c '
+        echo "=== Verifying seedgen tools ===" &&
+        argus --help > /dev/null && echo "OK: argus" &&
+        getcov --help > /dev/null && echo "OK: getcov" &&
+        seedd --help > /dev/null && echo "OK: seedd" &&
+        test -f /usr/local/lib/libcallgraph_rt.a && echo "OK: libcallgraph_rt.a" &&
+        test -f /usr/local/lib/SeedMindCFPass.so && echo "OK: SeedMindCFPass.so" &&
+        echo "=== All tools verified ==="
+      '
