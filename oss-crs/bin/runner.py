@@ -79,14 +79,14 @@ def register_seed_dirs():
 
     # Register fetch directory for existing seeds
     result = subprocess.run(
-        ["libCRS", "register-fetch-dir", "/runner/seeds-in"],
+        ["libCRS", "register-fetch-dir", "seed", "/runner/seeds-in"],
         capture_output=True,
         text=True
     )
     if result.returncode != 0:
         log_json("register_fetch_failed", error=result.stderr)
         raise RuntimeError(f"Failed to register fetch directory: {result.stderr}")
-    log_json("fetch_dir_registered", path="/runner/seeds-in")
+    log_json("fetch_dir_registered", path="/runner/seeds-in", type="seed")
 
     # Register submit directory for generated seeds
     result = subprocess.run(
