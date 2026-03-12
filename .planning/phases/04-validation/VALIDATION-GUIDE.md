@@ -6,199 +6,90 @@ This guide documents the step-by-step process to execute the full OSS-CRS seedge
 
 Before running validation, ensure you have:
 
-### 1. Docker
+### 1. OSS-CRS Repository
+- Clone or access oss-crs at `~/post/oss-crs-6`
+- The 42-seedgen compose file should be at `example/42-seedgen/compose.yaml`
+
+### 2. CRSBench Repository
+- Clone or access CRSBench at `~/post/CRSBench`
+- Contains benchmark targets like `afc-freerdp-delta-01`
+
+### 3. Docker
 - Docker installed and running
 - Verify: `docker info` should show engine status
 
-### 2. OSS-Fuzz Repository
-- Clone OSS-Fuzz to access benchmark targets
-- Default location: `$HOME/oss-fuzz`
-- Clone command: `git clone https://github.com/google/oss-fuzz.git ~/oss-fuzz`
+### 4. LLM API Credentials
+- A `.env` file in the oss-crs directory with API credentials
+- Or set `OSS_CRS_LLM_API_URL` and `OSS_CRS_LLM_API_KEY` environment variables
 
-### 3. LLM API Credentials
-- OpenAI API key (or compatible API endpoint)
-- Endpoint URL (default: `https://api.openai.com/v1`)
-
-### 4. System Requirements
+### 5. System Requirements
 - Python 3.10 or later
 - `uv` package manager installed
 - At least 8GB RAM (for Docker containers)
 - 20GB free disk space (for build artifacts)
 
-## Environment Setup
-
-### Step 1: Install Dependencies
-
-From the project root, install the oss-crs dependency:
-
-```bash
-cd /home/andrew/post/42-seedgen
-uv sync
-```
-
-This installs the `oss-crs` package which provides the CLI commands (`prepare`, `build-target`, `run`).
-
-### Step 2: Configure LLM API
-
-Set the required environment variables for the LLM backend:
-
-```bash
-# OpenAI (default)
-export OSS_CRS_LLM_API_URL="https://api.openai.com/v1"
-export OSS_CRS_LLM_API_KEY="sk-..."  # Your OpenAI API key
-
-# Alternative: Local LLM (e.g., Ollama)
-# export OSS_CRS_LLM_API_URL="http://localhost:11434/v1"
-# export OSS_CRS_LLM_API_KEY="not-needed"
-```
-
-### Step 3: Configure Target Project
-
-Set the benchmark target (defaults to libxml2/xml):
-
-```bash
-# Default configuration (libxml2)
-export FUZZ_PROJ_PATH="$HOME/oss-fuzz/projects/libxml2"
-export TARGET_HARNESS="xml"
-
-# Optional: Custom timeout (default: 600 seconds)
-export TIMEOUT=600
-```
-
-### Alternative Targets
-
-You can validate against different OSS-Fuzz targets:
-
-| Project | FUZZ_PROJ_PATH | TARGET_HARNESS |
-|---------|----------------|----------------|
-| libxml2 | `$HOME/oss-fuzz/projects/libxml2` | xml |
-| freerdp | `$HOME/oss-fuzz/projects/freerdp` | delta |
-| curl | `$HOME/oss-fuzz/projects/curl` | curl_fuzzer |
-
 ## Execution
 
-### Run Full Pipeline Validation
-
-Execute the complete validation with a single command:
+### Step 1: Navigate to OSS-CRS Directory
 
 ```bash
-./.planning/phases/04-validation/scripts/run-full-pipeline.sh
+cd ~/post/oss-crs-6
+source .env
 ```
 
-### What Each Phase Does
+### Step 2: Prepare Phase
 
-The script executes three OSS-CRS phases followed by validation:
+Build the dependency images (ARGUS, GetCov, SeedD, libcallgraph_rt):
 
-1. **Prepare Phase** (~1-2 minutes)
-   - Builds base Docker images with LLVM tooling
-   - Sets up coverage instrumentation environment
-   - Output: Docker images ready for target building
+```bash
+uv run oss-crs prepare \
+   --compose-file example/42-seedgen/compose.yaml
+```
 
-2. **Build-Target Phase** (~2-5 minutes)
-   - Clones and instruments the target project
-   - Compiles with coverage flags
-   - Output: Coverage-instrumented harness binary
+**Expected:** Docker images built successfully, no errors.
 
-3. **Run Phase** (~5-10 minutes, configurable via TIMEOUT)
-   - Starts SeedD gRPC server
-   - Launches SeedGenRunner with LLM integration
-   - Generates seeds iteratively with coverage feedback
-   - Output: Generated seeds in `./seeds-out/`
+### Step 3: Build-Target Phase
 
-4. **Validation Steps** (~1 minute)
-   - Measures baseline coverage (empty corpus)
-   - Measures coverage with generated seeds
-   - Compares and asserts improvement
+Instrument the benchmark target with coverage:
 
-### Expected Duration
+```bash
+uv run oss-crs build-target \
+   --compose-file example/42-seedgen/compose.yaml \
+   --fuzz-proj-path /home/andrew/post/CRSBench/benchmarks/afc-freerdp-delta-01
+```
+
+**Expected:** Coverage-instrumented harness built, compile_commands.json generated, call graph extracted.
+
+### Step 4: Run Phase
+
+Generate seeds with LLM-guided coverage feedback:
+
+```bash
+uv run oss-crs run \
+   --compose-file example/42-seedgen/compose.yaml \
+   --fuzz-proj-path /home/andrew/post/CRSBench/benchmarks/afc-freerdp-delta-01 \
+   --target-harness TestFuzzCryptoCertificateDataSetPEM
+```
+
+**Expected:** SeedD starts, SeedGenRunner iterates with LLM, seeds generated in submission directory.
+
+## Expected Duration
 
 | Phase | Typical Duration |
 |-------|------------------|
 | Prepare | 1-2 minutes |
 | Build-Target | 2-5 minutes |
 | Run | 5-10 minutes |
-| Validation | 1 minute |
 | **Total** | **10-15 minutes** |
 
-## Expected Output
+## Success Criteria
 
-### Successful Run
+A successful validation demonstrates:
 
-A successful validation produces output similar to:
-
-```
-==========================================
-OSS-CRS Pipeline Validation
-==========================================
-Compose file: ./oss-crs/compose.yaml
-Fuzz project: /home/user/oss-fuzz/projects/libxml2
-Target harness: xml
-Timeout: 600s
-==========================================
-
-=== Preparing validation environment ===
-Validation directories created
-
-=== Phase 1: PREPARE ===
-Building prepare container...
-[...prepare output...]
-Prepare phase complete
-
-=== Phase 2: BUILD-TARGET ===
-Building target with coverage instrumentation...
-[...build output...]
-Build-target phase complete
-
-=== Phase 3: RUN ===
-Generating seeds with LLM feedback loop...
-[...seed generation output...]
-Run phase complete
-
-=== Validation Step 1: Measuring Baseline Coverage ===
-Baseline: 150/1200 branches covered
-Baseline branch coverage: 12.50%
-Baseline coverage measured
-
-=== Validation Step 2: Measuring Coverage with Seeds ===
-Found 15 seeds to measure
-Seeds: 280/1200 branches covered
-Seeds branch coverage: 23.33%
-Seeds coverage measured
-
-=== Validation Step 3: Comparing Coverage ===
-============================================================
-Coverage Comparison Results
-============================================================
-
-BRANCH COVERAGE:
-  Baseline: 150/1200 (12.50%)
-  With seeds: 280/1200 (23.33%)
-  Improvement: +130 branches (+10.83 percentage points)
-
-FUNCTION COVERAGE:
-  Baseline: 45/200 (22.50%)
-  With seeds: 78/200 (39.00%)
-  Improvement: +33 functions (+16.50 percentage points)
-
-============================================================
-VALIDATION PASSED: Seeds demonstrate measurable coverage improvement
-
-  - Branch coverage improved by 130 (10.83 percentage points)
-  - Function coverage improved by 33 (16.50 percentage points)
-
-==========================================
-=== VALIDATION COMPLETE ===
-==========================================
-```
-
-### Coverage Metrics
-
-The validation measures two types of coverage:
-
-- **Branch Coverage**: Percentage of code branches (if/else, loops) exercised
-- **Function Coverage**: Percentage of functions called
-
-A successful validation shows improvement in at least one metric.
+1. **Prepare phase completes** — Docker images built without errors
+2. **Build-target phase completes** — Harness instrumented, artifacts submitted
+3. **Run phase completes** — Seeds generated in submission directory
+4. **Coverage improvement** — Generated seeds cover more branches/functions than empty corpus
 
 ## Troubleshooting
 
@@ -206,14 +97,11 @@ A successful validation shows improvement in at least one metric.
 
 **Error:** `Cannot connect to Docker daemon`
 ```bash
-# Start Docker daemon
 sudo systemctl start docker
-# Or on macOS, start Docker Desktop
 ```
 
 **Error:** `Permission denied while trying to connect to Docker`
 ```bash
-# Add user to docker group (Linux)
 sudo usermod -aG docker $USER
 newgrp docker
 ```
@@ -221,63 +109,34 @@ newgrp docker
 ### API Key Issues
 
 **Error:** `Authentication failed` or `Invalid API key`
-- Verify your API key is correct: `echo $OSS_CRS_LLM_API_KEY`
-- Check endpoint URL matches your provider
-- Ensure the key has sufficient credits/quota
-
-### OSS-Fuzz Issues
-
-**Error:** `FUZZ_PROJ_PATH does not exist`
-```bash
-# Clone OSS-Fuzz repository
-git clone https://github.com/google/oss-fuzz.git ~/oss-fuzz
-# Verify project exists
-ls ~/oss-fuzz/projects/libxml2
-```
+- Verify `.env` file exists and is sourced: `source .env`
+- Check `echo $OSS_CRS_LLM_API_KEY` shows a value
 
 ### Build Failures
 
 **Error:** `build-target phase failed`
 - Check Docker has enough disk space: `docker system df`
 - Clean Docker cache: `docker system prune -f`
-- Verify target project builds independently
+- Verify benchmark path exists: `ls /home/andrew/post/CRSBench/benchmarks/afc-freerdp-delta-01`
 
-### Validation Failures
+### Run Phase Issues
 
-**Error:** `VALIDATION FAILED: No coverage improvement`
-- This may indicate:
-  - Seeds are not reaching new code paths
-  - Harness has limited attack surface
-  - Increase TIMEOUT to generate more seeds
-  - Try a different target harness
+**Error:** `SeedD failed to start`
+- Check container logs: `docker logs <container_id>`
+- Verify gRPC port is not in use
 
-### Verifying Individual Phases
+## Alternative Targets
 
-To debug, run phases individually:
+You can validate against different CRSBench targets:
 
-```bash
-# Test prepare phase
-uv run oss-crs prepare --compose-file ./oss-crs/compose.yaml
-
-# Test build-target phase
-uv run oss-crs build-target \
-  --compose-file ./oss-crs/compose.yaml \
-  --fuzz-proj-path "$FUZZ_PROJ_PATH"
-
-# Test run phase
-uv run oss-crs run \
-  --compose-file ./oss-crs/compose.yaml \
-  --fuzz-proj-path "$FUZZ_PROJ_PATH" \
-  --target-harness "$TARGET_HARNESS" \
-  --timeout 60  # Short timeout for testing
-```
+| Benchmark | FUZZ_PROJ_PATH | TARGET_HARNESS |
+|-----------|----------------|----------------|
+| afc-freerdp-delta-01 | `/home/andrew/post/CRSBench/benchmarks/afc-freerdp-delta-01` | TestFuzzCryptoCertificateDataSetPEM |
 
 ## Validation Complete
 
-When you see `VALIDATION PASSED`, the seedgen pipeline has been verified to:
+When all three phases complete successfully with seeds generated, the seedgen pipeline has been verified to:
 
 1. Successfully execute all three OSS-CRS phases (prepare, build-target, run)
-2. Generate seeds that exercise new code paths
-3. Demonstrate measurable coverage improvement over baseline
-
-This satisfies requirements VALD-01 (full pipeline execution) and VALD-02 (coverage improvement validation).
+2. Generate seeds that can be used for fuzzing
+3. Satisfy requirements VALD-01 (full pipeline execution) and VALD-02 (coverage improvement validation)
