@@ -12,7 +12,7 @@ Port the seedgen component from the existing CRS to run standalone in OSS-CRS. P
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Prepare** - `oss-crs prepare` completes successfully
+- [x] **Phase 1: Prepare** - `oss-crs prepare` completes successfully
 - [ ] **Phase 2: Build-Target** - `oss-crs build-target` completes successfully
 - [ ] **Phase 3: Run** - `oss-crs run` completes successfully with seeds generated
 - [ ] **Phase 4: Validation** - Coverage improvement demonstrated over baseline
@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md — Create OSS-CRS repository structure (crs.yaml, docker-bake.hcl)
-- [ ] 01-02-PLAN.md — Create prepare-phase Dockerfile and build all tools
+- [x] 01-02-PLAN.md — Create prepare-phase Dockerfile and build all tools
 
 ### Phase 2: Build-Target
 **Goal**: `oss-crs build-target` command completes successfully
@@ -78,7 +78,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Prepare | 1/2 | In Progress|  |
+| 1. Prepare | 2/2 | Complete | 2026-03-12 |
 | 2. Build-Target | 0/2 | Not started | - |
 | 3. Run | 0/3 | Not started | - |
 | 4. Validation | 0/1 | Not started | - |

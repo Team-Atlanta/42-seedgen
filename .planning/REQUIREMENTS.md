@@ -11,15 +11,15 @@ Requirements for initial OSS-CRS integration. Each maps to roadmap phases.
 
 - [x] **REPO-01**: crs.yaml defines prepare, build-target, and run phases with correct schema
 - [x] **REPO-02**: docker-bake.hcl defines targets for building CRS dependency images
-- [ ] **REPO-03**: Dockerfile for each phase (prepare base, builders, runner)
-- [ ] **REPO-04**: Example compose.yaml for local testing with CRSBench target
+- [x] **REPO-03**: Dockerfile for each phase (prepare base, builders, runner)
+- [x] **REPO-04**: Example compose.yaml for local testing with CRSBench target
 
 ### Prepare Phase
 
-- [ ] **PREP-01**: ARGUS compiler wrapper built from source and available in image
-- [ ] **PREP-02**: GetCov coverage extraction tool built from source and available in image
-- [ ] **PREP-03**: SeedD gRPC runtime service built from source and available in image
-- [ ] **PREP-04**: libcallgraph_rt call graph library built and available for linkage
+- [x] **PREP-01**: ARGUS compiler wrapper built from source and available in image
+- [x] **PREP-02**: GetCov coverage extraction tool built from source and available in image
+- [x] **PREP-03**: SeedD gRPC runtime service built from source and available in image
+- [x] **PREP-04**: libcallgraph_rt call graph library built and available for linkage
 
 ### Build-Target Phase
 
@@ -82,12 +82,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | REPO-01 | Phase 1 | Complete |
 | REPO-02 | Phase 1 | Complete |
-| REPO-03 | Phase 1 | Pending |
-| REPO-04 | Phase 1 | Pending |
-| PREP-01 | Phase 1 | Pending |
-| PREP-02 | Phase 1 | Pending |
-| PREP-03 | Phase 1 | Pending |
-| PREP-04 | Phase 1 | Pending |
+| REPO-03 | Phase 1 | Complete |
+| REPO-04 | Phase 1 | Complete |
+| PREP-01 | Phase 1 | Complete |
+| PREP-02 | Phase 1 | Complete |
+| PREP-03 | Phase 1 | Complete |
+| PREP-04 | Phase 1 | Complete |
 | BLDG-01 | Phase 2 | Pending |
 | BLDG-02 | Phase 2 | Pending |
 | BLDG-03 | Phase 2 | Pending |
@@ -113,4 +113,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-11*
-*Last updated: 2026-03-12 after roadmap creation*
+*Last updated: 2026-03-12 after Phase 1 completion*
