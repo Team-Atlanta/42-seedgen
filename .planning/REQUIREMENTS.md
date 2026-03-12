@@ -30,11 +30,11 @@ Requirements for initial OSS-CRS integration. Each maps to roadmap phases.
 
 ### Run Phase Infrastructure
 
-- [ ] **RUNF-01**: Runner downloads build artifacts via libCRS download-build-output
-- [ ] **RUNF-02**: Runner uses OSS_CRS_LLM_API_URL and OSS_CRS_LLM_API_KEY for LLM access
-- [ ] **RUNF-03**: Runner exports seeds via libCRS register-submit-dir seed
-- [ ] **RUNF-04**: Runner imports seeds via libCRS register-fetch-dir (optional)
-- [ ] **RUNF-05**: SeedD gRPC service runs inside container for coverage collection
+- [x] **RUNF-01**: Runner downloads build artifacts via libCRS download-build-output
+- [x] **RUNF-02**: Runner uses OSS_CRS_LLM_API_URL and OSS_CRS_LLM_API_KEY for LLM access
+- [x] **RUNF-03**: Runner exports seeds via libCRS register-submit-dir seed
+- [x] **RUNF-04**: Runner imports seeds via libCRS register-fetch-dir (optional)
+- [x] **RUNF-05**: SeedD gRPC service runs inside container for coverage collection
 
 ### Seedgen Pipeline
 
@@ -92,11 +92,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BLDG-02 | Phase 2 | Complete |
 | BLDG-03 | Phase 2 | Complete |
 | BLDG-04 | Phase 2 | Complete |
-| RUNF-01 | Phase 3 | Pending |
-| RUNF-02 | Phase 3 | Pending |
-| RUNF-03 | Phase 3 | Pending |
-| RUNF-04 | Phase 3 | Pending |
-| RUNF-05 | Phase 3 | Pending |
+| RUNF-01 | Phase 3 | Complete |
+| RUNF-02 | Phase 3 | Complete |
+| RUNF-03 | Phase 3 | Complete |
+| RUNF-04 | Phase 3 | Complete |
+| RUNF-05 | Phase 3 | Complete |
 | SEED-01 | Phase 3 | Pending |
 | SEED-02 | Phase 3 | Pending |
 | SEED-03 | Phase 3 | Pending |
