@@ -26,11 +26,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Success Criteria** (what must be TRUE):
   1. `oss-crs prepare` runs to completion without errors
   2. All prepare-phase images exist and contain required tooling (ARGUS, GetCov, SeedD, libcallgraph_rt)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md — Create OSS-CRS repository structure (crs.yaml, docker-bake.hcl)
+- [ ] 01-02-PLAN.md — Create prepare-phase Dockerfile and build all tools
 
 ### Phase 2: Build-Target
 **Goal**: `oss-crs build-target` command completes successfully
@@ -78,7 +78,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Prepare | 0/2 | Not started | - |
+| 1. Prepare | 0/2 | Planned | - |
 | 2. Build-Target | 0/2 | Not started | - |
 | 3. Run | 0/3 | Not started | - |
 | 4. Validation | 0/1 | Not started | - |
