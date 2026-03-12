@@ -38,12 +38,12 @@ Requirements for initial OSS-CRS integration. Each maps to roadmap phases.
 
 ### Seedgen Pipeline
 
-- [ ] **SEED-01**: Glance stage generates initial Python generator script from harness
-- [ ] **SEED-02**: Filetype stage detects file format and enhances generator
-- [ ] **SEED-03**: Alignment stage documents structure requirements and aligns script
-- [ ] **SEED-04**: Coverage stage iteratively improves script based on coverage feedback
-- [ ] **SEED-05**: Multi-model LLM orchestration (o3-mini, claude-3.5-sonnet, gpt-4o)
-- [ ] **SEED-06**: Call graph extraction for function relationship analysis
+- [x] **SEED-01**: Glance stage generates initial Python generator script from harness
+- [x] **SEED-02**: Filetype stage detects file format and enhances generator
+- [x] **SEED-03**: Alignment stage documents structure requirements and aligns script
+- [x] **SEED-04**: Coverage stage iteratively improves script based on coverage feedback
+- [x] **SEED-05**: Multi-model LLM orchestration (o3-mini, claude-3.5-sonnet, gpt-4o)
+- [x] **SEED-06**: Call graph extraction for function relationship analysis
 
 ### Validation
 
@@ -97,12 +97,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RUNF-03 | Phase 3 | Complete |
 | RUNF-04 | Phase 3 | Complete |
 | RUNF-05 | Phase 3 | Complete |
-| SEED-01 | Phase 3 | Pending |
-| SEED-02 | Phase 3 | Pending |
-| SEED-03 | Phase 3 | Pending |
-| SEED-04 | Phase 3 | Pending |
-| SEED-05 | Phase 3 | Pending |
-| SEED-06 | Phase 3 | Pending |
+| SEED-01 | Phase 3 | Complete |
+| SEED-02 | Phase 3 | Complete |
+| SEED-03 | Phase 3 | Complete |
+| SEED-04 | Phase 3 | Complete |
+| SEED-05 | Phase 3 | Complete |
+| SEED-06 | Phase 3 | Complete |
 | VALD-01 | Phase 4 | Pending |
 | VALD-02 | Phase 4 | Pending |
 
