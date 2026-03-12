@@ -77,27 +77,36 @@ def register_seed_dirs():
     """Register seed input/output directories with libCRS."""
     log_json("register_seed_dirs_start")
 
-    # Register fetch directory for existing seeds
-    result = subprocess.run(
-        ["libCRS", "register-fetch-dir", "seed", "/runner/seeds-in"],
-        capture_output=True,
-        text=True
-    )
-    if result.returncode != 0:
-        log_json("register_fetch_failed", error=result.stderr)
-        raise RuntimeError(f"Failed to register fetch directory: {result.stderr}")
-    log_json("fetch_dir_registered", path="/runner/seeds-in", type="seed")
+    # Register fetch directory for existing seeds (optional - only needed for delta mode)
+    try:
+        result = subprocess.run(
+            ["libCRS", "register-fetch-dir", "seed", "/runner/seeds-in"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode != 0:
+            log_json("register_fetch_skipped", reason="not required for full mode", error=result.stderr.strip())
+        else:
+            log_json("fetch_dir_registered", path="/runner/seeds-in", type="seed")
+    except subprocess.TimeoutExpired:
+        log_json("register_fetch_skipped", reason="timeout - not required for full mode")
 
-    # Register submit directory for generated seeds
-    result = subprocess.run(
-        ["libCRS", "register-submit-dir", "seed", "/runner/seeds-out"],
-        capture_output=True,
-        text=True
-    )
-    if result.returncode != 0:
-        log_json("register_submit_failed", error=result.stderr)
-        raise RuntimeError(f"Failed to register submit directory: {result.stderr}")
-    log_json("submit_dir_registered", path="/runner/seeds-out", type="seed")
+    # Register submit directory for generated seeds (required)
+    try:
+        result = subprocess.run(
+            ["libCRS", "register-submit-dir", "seed", "/runner/seeds-out"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode != 0:
+            log_json("register_submit_failed", error=result.stderr)
+            raise RuntimeError(f"Failed to register submit directory: {result.stderr}")
+        log_json("submit_dir_registered", path="/runner/seeds-out", type="seed")
+    except subprocess.TimeoutExpired:
+        log_json("register_submit_timeout", error="libCRS register-submit-dir timed out")
+        raise RuntimeError("libCRS register-submit-dir timed out after 10s")
 
     log_json("register_seed_dirs_complete")
 
