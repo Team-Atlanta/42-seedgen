@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Prepare** - `oss-crs prepare` completes successfully
 - [x] **Phase 2: Build-Target** - `oss-crs build-target` completes successfully
-- [ ] **Phase 3: Run** - `oss-crs run` completes successfully with seeds generated
+- [x] **Phase 3: Run** - `oss-crs run` completes successfully with seeds generated
 - [ ] **Phase 4: Validation** - Coverage improvement demonstrated over baseline
 
 ## Phase Details
@@ -55,9 +55,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Create runner Dockerfile and orchestration script (artifact download, SeedD startup, seed directories)
-- [ ] 03-02-PLAN.md — Integrate seedgen2 pipeline and adapt presets.py for OSS-CRS LLM
-- [ ] 03-03-PLAN.md — Update docker-bake.hcl and crs.yaml, build and verify runner image
+- [x] 03-01-PLAN.md — Create runner Dockerfile and orchestration script (artifact download, SeedD startup, seed directories)
+- [x] 03-02-PLAN.md — Integrate seedgen2 pipeline and adapt presets.py for OSS-CRS LLM
+- [x] 03-03-PLAN.md — Update docker-bake.hcl and crs.yaml, build and verify runner image
 
 ### Phase 4: Validation
 **Goal**: End-to-end validation proves seeds improve coverage over baseline
@@ -66,10 +66,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Full pipeline (prepare -> build-target -> run) completes with afc-freerdp-delta-01 benchmark
   2. Generated seeds demonstrate measurable coverage improvement over empty corpus
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — Create validation scripts for full pipeline execution and coverage comparison
 
 ## Progress
 
@@ -80,7 +80,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 1. Prepare | 2/2 | Complete | 2026-03-12 |
 | 2. Build-Target | 2/2 | Complete | 2026-03-12 |
-| 3. Run | 1/3 | In Progress|  |
+| 3. Run | 3/3 | Complete | 2026-03-12 |
 | 4. Validation | 0/1 | Not started | - |
 
 ---
