@@ -83,7 +83,9 @@ func Serve(ctx context.Context, compilation_database_path string) error {
 	// Setup health check
 	healthServer := health.NewServer()
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
+	// Set status for both named service and empty string (default health check)
 	healthServer.SetServingStatus("seedd", grpc_health_v1.HealthCheckResponse_SERVING)
+	healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
 
 	// Start server
 	logging.Logger.Info("Starting gRPC server",

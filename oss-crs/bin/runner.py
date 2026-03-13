@@ -72,6 +72,47 @@ def download_artifacts():
     log_json("download_artifacts_complete", count=len(artifacts))
 
 
+def setup_seedd_artifacts():
+    """
+    Set up /out directory with artifacts for SeedD.
+    SeedD expects harness binaries and compile_commands in /out.
+    """
+    log_json("setup_seedd_artifacts_start")
+
+    # Ensure /out exists
+    os.makedirs("/out", exist_ok=True)
+
+    # Symlink coverage harness binaries to /out
+    harness_dir = "/runner/artifacts/coverage-harness"
+    for item in os.listdir(harness_dir):
+        src = os.path.join(harness_dir, item)
+        dst = os.path.join("/out", item)
+        if os.path.isfile(src) and not os.path.exists(dst):
+            os.symlink(src, dst)
+            log_json("artifact_linked", src=src, dst=dst)
+
+    # Symlink compile_commands directory
+    compile_cmd_src = "/runner/artifacts/compile-commands"
+    compile_cmd_dst = "/out/compile_commands"
+    if os.path.exists(compile_cmd_src) and not os.path.exists(compile_cmd_dst):
+        os.symlink(compile_cmd_src, compile_cmd_dst)
+        log_json("artifact_linked", src=compile_cmd_src, dst=compile_cmd_dst)
+
+    # Symlink LLVM tools to /usr/local/bin so getcov can find them
+    # These need to be version-matched with the build environment
+    for tool in ["llvm-profdata", "llvm-cov"]:
+        src = f"/runner/artifacts/coverage-harness/{tool}"
+        dst = f"/usr/local/bin/{tool}"
+        if os.path.exists(src):
+            # Remove existing symlink/file if present
+            if os.path.exists(dst) or os.path.islink(dst):
+                os.remove(dst)
+            os.symlink(src, dst)
+            log_json("llvm_tool_linked", tool=tool, src=src, dst=dst)
+
+    log_json("setup_seedd_artifacts_complete")
+
+
 def register_seed_dirs():
     """Register seed output directory with libCRS (spawns background daemon)."""
     log_json("register_seed_dirs_start")
@@ -161,7 +202,7 @@ def start_seedd() -> subprocess.Popen:
     raise RuntimeError(f"SeedD gRPC health check timeout after {max_attempts} attempts")
 
 
-def run_seedgen_loop(harness_path: str, project_name: str, num_seeds: int):
+def run_seedgen_loop(harness_path: str, project_name: str, num_seeds: int, seedd_proc: subprocess.Popen):
     """
     Run seedgen pipeline in a loop.
 
@@ -169,6 +210,7 @@ def run_seedgen_loop(harness_path: str, project_name: str, num_seeds: int):
         harness_path: Path to coverage harness binary
         project_name: Name of target project
         num_seeds: Target number of seeds to generate
+        seedd_proc: Running SeedD process
     """
     result_dir = "/runner/seeds-out"
     os.makedirs(result_dir, exist_ok=True)
@@ -176,16 +218,30 @@ def run_seedgen_loop(harness_path: str, project_name: str, num_seeds: int):
     iteration = 0
     while True:
         iteration += 1
-        log_json("pipeline_start", iteration=iteration)
+
+        # Check if seedd is still running before each iteration
+        if seedd_proc.poll() is not None:
+            # Seedd died - get its output
+            stdout, stderr = seedd_proc.communicate()
+            log_json("seedd_died_during_loop",
+                    iteration=iteration,
+                    returncode=seedd_proc.returncode,
+                    stdout=stdout.decode() if stdout else "",
+                    stderr=stderr.decode() if stderr else "")
+            raise RuntimeError(f"SeedD died with return code {seedd_proc.returncode}")
+
+        log_json("pipeline_start", iteration=iteration, seedd_pid=seedd_proc.pid)
 
         # Get model name from env (set by compose.yaml) or use default
         gen_model = os.getenv("SEEDGEN_GENERATIVE_MODEL", "claude-3.5-sonnet")
 
+        # Pass just the basename since seedd joins it with /out
+        harness_basename = os.path.basename(harness_path)
         agent = SeedGenAgent(
             result_dir=result_dir,
             ip_addr="localhost",
             project_name=project_name,
-            harness_binary=harness_path,
+            harness_binary=harness_basename,
             gen_model=gen_model
         )
 
@@ -201,6 +257,14 @@ def run_seedgen_loop(harness_path: str, project_name: str, num_seeds: int):
                 break
 
         except Exception as e:
+            # Check if seedd died
+            if seedd_proc.poll() is not None:
+                stdout, stderr = seedd_proc.communicate()
+                log_json("seedd_died_on_error",
+                        iteration=iteration,
+                        returncode=seedd_proc.returncode,
+                        stdout=stdout.decode() if stdout else "",
+                        stderr=stderr.decode() if stderr else "")
             log_json("pipeline_error", iteration=iteration, error=str(e))
             time.sleep(5)  # Brief pause on error before retry
 
@@ -226,6 +290,13 @@ def main():
         download_artifacts()
     except Exception as e:
         log_json("fatal_error", stage="download_artifacts", error=str(e))
+        sys.exit(1)
+
+    # Setup /out directory for SeedD
+    try:
+        setup_seedd_artifacts()
+    except Exception as e:
+        log_json("fatal_error", stage="setup_seedd_artifacts", error=str(e))
         sys.exit(1)
 
     # Register seed directories
@@ -271,7 +342,7 @@ def main():
 
     # Run seedgen pipeline
     try:
-        run_seedgen_loop(harness_path, project_name, num_seeds)
+        run_seedgen_loop(harness_path, project_name, num_seeds, seedd_proc)
     except Exception as e:
         log_json("fatal_error", stage="run_seedgen_loop", error=str(e))
         sys.exit(1)

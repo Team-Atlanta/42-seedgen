@@ -7,6 +7,7 @@ import grpc
 import os
 import shutil
 import uuid
+import logging
 import grpc_health.v1.health_pb2 as health_pb2
 import grpc_health.v1.health_pb2_grpc as health_pb2_grpc
 from typing import List, Optional, cast
@@ -19,40 +20,58 @@ DEFAULT_PORT = 9002
 DEFAULT_TIMEOUT = 30  # seconds
 DEFAULT_RETRY_INTERVAL = 3  # second
 
+logger = logging.getLogger(__name__)
+
 
 def grpc_call(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         start_time = time.time()
         last_error = None
+        attempt = 0
+
+        logger.info(f"[grpc_call] Starting call to {func.__name__} on {self.ip_addr}:{DEFAULT_PORT}")
 
         while time.time() - start_time < DEFAULT_TIMEOUT:
+            attempt += 1
             try:
+                logger.info(f"[grpc_call] Attempt {attempt}: health check...")
                 self.health_check()
+                logger.info(f"[grpc_call] Health check passed, calling {func.__name__}")
                 return func(self, *args, **kwargs)
             except grpc.RpcError as rpc_error:
                 last_error = rpc_error
                 # Cast the error to grpc.Call to satisfy type checker
                 error = rpc_error if isinstance(
                     rpc_error, grpc.Call) else rpc_error
-                if isinstance(error, grpc.Call) and error.code() == grpc.StatusCode.UNAVAILABLE:
-                    time.sleep(DEFAULT_RETRY_INTERVAL)
-                    self.recreate_channel()
-                    continue
-                # For other gRPC errors, raise immediately
                 if isinstance(error, grpc.Call):
-                    if error.code() == grpc.StatusCode.INVALID_ARGUMENT:
+                    code = error.code()
+                    details = error.details()
+                    logger.warning(f"[grpc_call] Attempt {attempt}: gRPC error - code={code.name}, details={details}")
+
+                    if code == grpc.StatusCode.UNAVAILABLE:
+                        logger.info(f"[grpc_call] Server unavailable, sleeping {DEFAULT_RETRY_INTERVAL}s before retry...")
+                        time.sleep(DEFAULT_RETRY_INTERVAL)
+                        self.recreate_channel()
+                        continue
+                    elif code == grpc.StatusCode.INVALID_ARGUMENT:
                         raise ValueError(
                             "Invalid arguments provided to gRPC call") from rpc_error
-                    elif error.code() == grpc.StatusCode.NOT_FOUND:
+                    elif code == grpc.StatusCode.NOT_FOUND:
                         raise FileNotFoundError(
                             "Requested resource not found") from rpc_error
                     else:
                         raise RuntimeError(
-                            f"gRPC call failed: {error.details()} (Code: {error.code().name})"
+                            f"gRPC call failed: {details} (Code: {code.name})"
                         ) from rpc_error
+                else:
+                    logger.warning(f"[grpc_call] Attempt {attempt}: RpcError (not grpc.Call): {rpc_error}")
+            except Exception as e:
+                logger.error(f"[grpc_call] Attempt {attempt}: Non-gRPC exception: {type(e).__name__}: {e}")
+                raise
 
         # If we've exhausted our retries, raise the last error
+        logger.error(f"[grpc_call] Exhausted {attempt} attempts over {DEFAULT_TIMEOUT}s, last_error={last_error}")
         raise RuntimeError(
             f"gRPC server remained unavailable after {DEFAULT_TIMEOUT} seconds"
         ) from last_error
@@ -64,11 +83,14 @@ class SeedD:
         self.ip_addr = ip_addr
         # the directory is shared across the container and host machine
         self.shared_dir = shared_dir
+        logger.info(f"[SeedD] Initializing connection to {ip_addr}:{DEFAULT_PORT}")
         self.channel = grpc.insecure_channel(f"{ip_addr}:{DEFAULT_PORT}")
         self.stub = seedd_pb2_grpc.SeedDStub(self.channel)
         self.health_stub = health_pb2_grpc.HealthStub(self.channel)
+        logger.info(f"[SeedD] Channel created, shared_dir={shared_dir}")
 
     def recreate_channel(self):
+        logger.info(f"[SeedD] Recreating channel to {self.ip_addr}:{DEFAULT_PORT}")
         self.channel.close()
         self.channel = grpc.insecure_channel(f"{self.ip_addr}:{DEFAULT_PORT}")
         self.stub = seedd_pb2_grpc.SeedDStub(self.channel)
@@ -76,7 +98,8 @@ class SeedD:
 
     def health_check(self):
         """Performs a health check on the gRPC server."""
-        self.health_stub.Check(health_pb2.HealthCheckRequest())
+        response = self.health_stub.Check(health_pb2.HealthCheckRequest(), timeout=5)
+        logger.debug(f"[SeedD] Health check response: status={response.status}")
 
     def share_file(self, file_path: str):
         # Generate a UUID for the file to avoid name conflicts

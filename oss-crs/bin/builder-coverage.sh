@@ -36,9 +36,16 @@ for item in /out/*; do
     fi
 done
 
-# Copy LLVM coverage tools from base image
-cp /usr/bin/llvm-profdata /artifacts/coverage-harness/ 2>/dev/null || true
-cp /usr/bin/llvm-cov /artifacts/coverage-harness/ 2>/dev/null || true
+# Copy LLVM coverage tools from base image (search common paths)
+for tool in llvm-profdata llvm-cov; do
+    for path in /usr/bin /usr/local/bin /usr/lib/llvm-*/bin; do
+        if [ -x "${path}/${tool}" ]; then
+            cp "${path}/${tool}" /artifacts/coverage-harness/
+            echo "[builder-coverage] Copied ${tool} from ${path}"
+            break
+        fi
+    done
+done
 
 echo "[builder-coverage] Coverage build complete"
 ls -la /artifacts/coverage-harness/

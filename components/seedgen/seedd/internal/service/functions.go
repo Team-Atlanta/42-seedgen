@@ -27,12 +27,13 @@ func runGetCovAll(harnessBinary string) (string, error) {
 	}
 	defer os.Remove(seedFile)
 
-	getcovCmd := exec.Command("/getcov", "--all", "--", filepath.Join("/out", harnessBinary), seedFile)
+	harnessBinaryPath := filepath.Join("/out", harnessBinary)
+	getcovCmd := exec.Command(getCovBinary, "--all", "--", harnessBinaryPath, seedFile)
 	getcovCmd.Dir = artifactDir
 
-	output, err := getcovCmd.Output()
+	output, err := getcovCmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("failed to run getcov: %v\nOutput: %s", err, string(output))
+		return "", fmt.Errorf("failed to run getcov (harness=%s): %v\nOutput: %s", harnessBinaryPath, err, string(output))
 	}
 
 	return string(output), nil
