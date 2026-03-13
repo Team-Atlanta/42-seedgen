@@ -73,11 +73,11 @@ def download_artifacts():
 
 
 def download_source():
-    """Download target project source code via libCRS."""
+    """Download effective target source tree via libCRS for SeedD source serving."""
     log_json("download_source_start")
 
     result = subprocess.run(
-        ["libCRS", "download-source", "target", "/src"],
+        ["libCRS", "download-source", "repo", "/src"],
         capture_output=True,
         text=True
     )
