@@ -12,6 +12,7 @@ target_build_phase:
     dockerfile: oss-crs/dockerfiles/builder-coverage.Dockerfile
     outputs:
       - coverage-harness
+      - source-tree
 
   - name: build-compile-commands
     dockerfile: oss-crs/dockerfiles/builder-compile-commands.Dockerfile
@@ -40,6 +41,7 @@ run:
     - coverage-harness
     - compile-commands
     - callgraph
+    - source-tree
   outputs:
     - name: seed
       type: seed

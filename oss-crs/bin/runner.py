@@ -49,6 +49,7 @@ def download_artifacts():
         ("coverage-harness", "/runner/artifacts/coverage-harness"),
         ("compile-commands", "/runner/artifacts/compile-commands"),
         ("callgraph", "/runner/artifacts/callgraph"),
+        ("source-tree", "/src"),
     ]
 
     for artifact_name, artifact_path in artifacts:
@@ -71,25 +72,6 @@ def download_artifacts():
 
     log_json("download_artifacts_complete", count=len(artifacts))
 
-
-def download_source():
-    """Download effective target source tree via libCRS for SeedD source serving."""
-    log_json("download_source_start")
-
-    result = subprocess.run(
-        ["libCRS", "download-source", "repo", "/src"],
-        capture_output=True,
-        text=True
-    )
-    if result.returncode != 0:
-        log_json("download_source_failed", error=result.stderr)
-        raise RuntimeError(f"Failed to download source: {result.stderr}")
-
-    if not os.path.isdir("/src"):
-        log_json("source_dir_missing", path="/src")
-        raise RuntimeError("Source downloaded but /src directory not found")
-
-    log_json("download_source_complete", path="/src")
 
 
 def setup_seedd_artifacts():
@@ -310,13 +292,6 @@ def main():
         download_artifacts()
     except Exception as e:
         log_json("fatal_error", stage="download_artifacts", error=str(e))
-        sys.exit(1)
-
-    # Download source code for SeedD to serve via gRPC
-    try:
-        download_source()
-    except Exception as e:
-        log_json("fatal_error", stage="download_source", error=str(e))
         sys.exit(1)
 
     # Setup /out directory for SeedD

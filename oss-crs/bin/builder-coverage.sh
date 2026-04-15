@@ -52,5 +52,9 @@ ls -la /artifacts/coverage-harness/
 
 # Submit via libCRS
 libCRS submit-build-output /artifacts/coverage-harness coverage-harness
-
 echo "[builder-coverage] Submitted coverage-harness"
+
+# Capture post-build source tree for SeedD source serving
+# LLVM coverage data references absolute paths as they existed during compilation
+libCRS submit-build-output /src source-tree
+echo "[builder-coverage] Submitted source-tree"
