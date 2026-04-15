@@ -8,23 +8,12 @@ prepare_phase:
   hcl: oss-crs/docker-bake.hcl
 
 target_build_phase:
-  - name: build-coverage
-    dockerfile: oss-crs/dockerfiles/builder-coverage.Dockerfile
+  - name: build
+    dockerfile: oss-crs/dockerfiles/builder.Dockerfile
     outputs:
-      - coverage-harness
-      - source-tree
-
-  - name: build-compile-commands
-    dockerfile: oss-crs/dockerfiles/builder-compile-commands.Dockerfile
-    outputs:
+      - harness
       - compile-commands
-
-  - name: build-callgraph
-    dockerfile: oss-crs/dockerfiles/builder-callgraph.Dockerfile
-    depends_on:
-      - build-coverage
-    outputs:
-      - callgraph
+      - source-tree
 
 crs_run_phase:
   runner:
@@ -38,9 +27,8 @@ run:
     - TARGET_HARNESS
     - NUM_SEEDS
   inputs:
-    - coverage-harness
+    - harness
     - compile-commands
-    - callgraph
     - source-tree
   outputs:
     - name: seed

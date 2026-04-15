@@ -46,9 +46,8 @@ def download_artifacts():
     log_json("download_artifacts_start")
 
     artifacts = [
-        ("coverage-harness", "/runner/artifacts/coverage-harness"),
+        ("harness", "/runner/artifacts/harness"),
         ("compile-commands", "/runner/artifacts/compile-commands"),
-        ("callgraph", "/runner/artifacts/callgraph"),
         ("source-tree", "/src"),
     ]
 
@@ -84,8 +83,8 @@ def setup_seedd_artifacts():
     # Ensure /out exists
     os.makedirs("/out", exist_ok=True)
 
-    # Symlink coverage harness binaries to /out
-    harness_dir = "/runner/artifacts/coverage-harness"
+    # Symlink harness binaries to /out (single binary has both coverage + callgraph)
+    harness_dir = "/runner/artifacts/harness"
     for item in os.listdir(harness_dir):
         src = os.path.join(harness_dir, item)
         dst = os.path.join("/out", item)
@@ -100,23 +99,9 @@ def setup_seedd_artifacts():
         os.symlink(compile_cmd_src, compile_cmd_dst)
         log_json("artifact_linked", src=compile_cmd_src, dst=compile_cmd_dst)
 
-    # Symlink callgraph harness binaries to /out/callgraph
-    # SeedD uses these (not coverage binaries) for call graph dry runs
-    callgraph_dir = "/runner/artifacts/callgraph"
-    callgraph_dst = "/out/callgraph"
-    if os.path.isdir(callgraph_dir):
-        os.makedirs(callgraph_dst, exist_ok=True)
-        for item in os.listdir(callgraph_dir):
-            src = os.path.join(callgraph_dir, item)
-            dst = os.path.join(callgraph_dst, item)
-            if os.path.isfile(src) and not os.path.exists(dst):
-                os.symlink(src, dst)
-                log_json("artifact_linked", src=src, dst=dst)
-
     # Symlink LLVM tools to /usr/local/bin so getcov can find them
-    # These need to be version-matched with the build environment
     for tool in ["llvm-profdata", "llvm-cov"]:
-        src = f"/runner/artifacts/coverage-harness/{tool}"
+        src = f"/runner/artifacts/harness/{tool}"
         dst = f"/usr/local/bin/{tool}"
         if os.path.exists(src):
             # Remove existing symlink/file if present

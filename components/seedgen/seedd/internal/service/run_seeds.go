@@ -18,9 +18,8 @@ import (
 )
 
 const (
-	artifactDir     = "/out"
-	callgraphDir    = "/out/callgraph"
-	getCovBinary    = "/usr/local/bin/getcov"
+	artifactDir  = "/out"
+	getCovBinary = "/usr/local/bin/getcov"
 )
 
 // GetCovConfig holds the configuration for running coverage analysis.
