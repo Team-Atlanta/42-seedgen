@@ -322,10 +322,10 @@ def main():
             seed_dirs_registered=True)
 
     # Determine harness path from artifacts
-    harness_path = os.path.join("/runner/artifacts/coverage-harness", "harness")
+    harness_path = os.path.join("/runner/artifacts/harness", "harness")
     if not os.path.exists(harness_path):
         # Try finding any executable in the coverage-harness directory
-        harness_dir = "/runner/artifacts/coverage-harness"
+        harness_dir = "/runner/artifacts/harness"
         executables = [f for f in os.listdir(harness_dir)
                       if os.path.isfile(os.path.join(harness_dir, f))
                       and os.access(os.path.join(harness_dir, f), os.X_OK)]
