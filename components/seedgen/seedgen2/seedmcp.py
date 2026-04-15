@@ -157,7 +157,7 @@ class SeedMcpAgent:
             harness_binary: Path to the harness binary
             harness_source: Source code of the harness binary
         """
-        self.shared_dir = Path(f"{result_dir}/../shared")
+        self.shared_dir = Path("/shared")
         self.result_dir = Path(result_dir)
         self.src_dir = Path(src_dir)
         self.diff_dir = Path(diff_dir) if diff_dir else None

@@ -74,9 +74,13 @@ func (s *RunSeedsService) dryRunSeeds(harnessBinary string, seedsPaths []string)
 		logger.Warn("LLVMFuzzerTestOneInput not found in call graph",
 			zap.String("harness_binary", harnessBinary),
 		)
-		// copy CallLogFile to /shared/callgraph_{uuid}.log
+		// copy CallLogFile for debugging
+		logDir := os.Getenv("OSS_CRS_LOG_DIR")
+		if logDir == "" {
+			logDir = "/shared"
+		}
 		uuid := uuid.New()
-		copyFile(CallLogFile, fmt.Sprintf("/shared/callgraph_%s.log", uuid))
+		copyFile(CallLogFile, fmt.Sprintf("%s/callgraph_%s.log", logDir, uuid))
 	}
 
 	logger.Info("Dry run seeds completed",

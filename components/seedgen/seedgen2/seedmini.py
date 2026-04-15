@@ -29,7 +29,7 @@ class SeedMiniAgent:
             harness_binary: Path to the harness binary
             harness_source: Source code of the harness binary
         """
-        self.shared_dir = Path(f"{result_dir}/../shared")
+        self.shared_dir = Path("/shared")
         self.result_dir = Path(result_dir)
         self.project_name = project_name
         self.harness_binary = harness_binary

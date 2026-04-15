@@ -308,6 +308,9 @@ def main():
         log_json("fatal_error", stage="register_seed_dirs", error=str(e))
         sys.exit(1)
 
+    # Create /shared for SeedD <-> seedgen file exchange
+    os.makedirs("/shared", exist_ok=True)
+
     # Start SeedD
     try:
         seedd_proc = start_seedd()

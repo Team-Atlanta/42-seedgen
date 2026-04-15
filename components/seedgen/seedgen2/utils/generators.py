@@ -35,7 +35,7 @@ class SeedGeneratorStore:
     def set_result_dir(self, result_dir: str):
         self.result_dir = result_dir
         os.makedirs(self.result_dir, exist_ok=True)
-        # make sure the result dir is absolute path, because we will use it in Docker mount
+        # make sure the result dir is absolute path
         self.result_dir = os.path.abspath(self.result_dir)
 
     def set_num_seeds(self, num_seeds: int):
@@ -59,11 +59,25 @@ class SeedGeneratorStore:
         wrapper_file_path = os.path.join(
             self.result_dir, f"wrapper_{generator_id}.sh")
 
-        # Create a shell wrapper that runs the generator n times
+        # Write the generator script
+        with open(generator_file_path, "w") as f:
+            f.write(self.generators[generator_id])
+
+        # Create seeds directory
+        seeds_dir = os.path.join(self.result_dir, "seeds")
+        os.makedirs(seeds_dir, exist_ok=True)
+
+        # Prepare the list of expected seed paths
+        seed_paths = [
+            os.path.join(seeds_dir, f"seed_{generator_id}_{i}")
+            for i in range(self.num_seeds)
+        ]
+
+        # Create wrapper that runs the generator n times
         wrapper_code = f'''#!/bin/sh
 for i in $(seq 0 {self.num_seeds - 1})
 do
-    timeout 5s python /app/generator.py "/app/output/seed_{generator_id}_$i"
+    timeout 5s python {generator_file_path} "{seeds_dir}/seed_{generator_id}_$i"
     exit_code=$?
     if [ $exit_code -eq 124 ]; then
         echo "Generator timed out after 5 seconds at iteration $i"
@@ -77,35 +91,11 @@ do
     fi
 done
 '''
-        # Write both scripts
-        with open(generator_file_path, "w") as f:
-            f.write(self.generators[generator_id])
         with open(wrapper_file_path, "w") as f:
             f.write(wrapper_code)
-        # Make the wrapper executable
         os.chmod(wrapper_file_path, 0o755)
 
-        # Create seeds directory
-        seeds_dir = os.path.join(self.result_dir, "seeds")
-        os.makedirs(seeds_dir, exist_ok=True)
-
-        # Prepare the list of expected seed paths
-        seed_paths = [
-            os.path.join(seeds_dir, f"seed_{generator_id}_{i}")
-            for i in range(self.num_seeds)
-        ]
-
-        # Run the wrapper script in Docker container
-        docker_cmd = [
-            "docker", "run", "--rm",
-            "-v", f"{generator_file_path}:/app/generator.py:ro",
-            "-v", f"{wrapper_file_path}:/app/wrapper.sh:ro",
-            "-v", f"{seeds_dir}:/app/output",
-            "python:3.9-slim",
-            "/app/wrapper.sh"
-        ]
-
-        result = subprocess.run(docker_cmd, stderr=subprocess.PIPE)
+        result = subprocess.run([wrapper_file_path], stderr=subprocess.PIPE)
         if result.returncode != 0:
             return GeneratorRunResult(False, result.stderr.decode("utf-8"), None)
 
