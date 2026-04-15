@@ -11,8 +11,9 @@ RUN /opt/libCRS/install.sh
 COPY --from=seedgen-runtime:latest /usr/local/bin/argus /usr/local/bin/argus
 
 # Copy LLVM pass and runtime library for callgraph instrumentation
-COPY --from=seedgen-runtime:latest /usr/local/lib/SeedMindCFPass.so /usr/local/lib/SeedMindCFPass.so
-COPY --from=seedgen-runtime:latest /usr/local/lib/libcallgraph_rt.a /usr/local/lib/libcallgraph_rt.a
+# Placed at root (/) to match find_object search paths in ARGUS
+COPY --from=seedgen-runtime:latest /usr/local/lib/SeedMindCFPass.so /SeedMindCFPass.so
+COPY --from=seedgen-runtime:latest /usr/local/lib/libcallgraph_rt.a /libcallgraph_rt.a
 
 # Copy build script
 COPY oss-crs/bin/builder.sh /builder.sh

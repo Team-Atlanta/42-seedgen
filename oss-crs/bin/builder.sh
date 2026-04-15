@@ -14,9 +14,10 @@ echo "[builder] Starting unified build..."
 export CC=/usr/local/bin/argus
 export CXX=/usr/local/bin/argus
 export BANDFUZZ_PROFILE=1
-export ADD_ADDITIONAL_PASSES=/usr/local/lib/SeedMindCFPass.so
+export BANDFUZZ_OPT=0
+export ADD_ADDITIONAL_PASSES=SeedMindCFPass.so
 export ADD_RUNTIME=1
-export BANDFUZZ_RUNTIME=/usr/local/lib/libcallgraph_rt.a
+export BANDFUZZ_RUNTIME=libcallgraph_rt.a
 export GENERATE_COMPILATION_DATABASE=1
 export COMPILATION_DATABASE_DIR=/out/compilation_database
 
