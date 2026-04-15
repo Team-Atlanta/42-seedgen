@@ -58,21 +58,23 @@ func (s *RunSeedsService) dryRunSeeds(harnessBinary string, seedsPaths []string)
 
 	// Run the callgraph-instrumented binary (not coverage binary) with EXPORT_CALLS=1
 	// The callgraph binary is built with SeedMindCFPass.so + libcallgraph_rt.a
-	os.Setenv("EXPORT_CALLS", "1")
 	args := []string{"-timeout=3"}
 	args = append(args, seedsPaths...)
 	callgraphBinary := filepath.Join(callgraphDir, harnessBinary)
 	cmd := exec.Command(callgraphBinary, args...)
 	cmd.Dir = callgraphDir
-	var stderr strings.Builder
+	cmd.Env = append(os.Environ(), "EXPORT_CALLS=1")
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		logger.Warn("Callgraph dry run failed",
-			zap.String("binary", callgraphBinary),
-			zap.Error(err),
-			zap.String("stderr", stderr.String()),
-		)
-	}
+	runErr := cmd.Run()
+	logger.Info("Callgraph dry run result",
+		zap.String("binary", callgraphBinary),
+		zap.Error(runErr),
+		zap.Int("exit_code", cmd.ProcessState.ExitCode()),
+		zap.String("stdout_tail", truncateTail(stdout.String(), 500)),
+		zap.String("stderr_tail", truncateTail(stderr.String(), 500)),
+	)
 
 	// Check if call log was produced
 	if _, err := os.Stat(CallLogFile); os.IsNotExist(err) {
@@ -279,6 +281,14 @@ func (cg *CallGraph) processCalls(calls []Call) error {
 	}
 
 	return nil
+}
+
+// truncateTail returns the last n bytes of a string
+func truncateTail(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return "..." + s[len(s)-n:]
 }
 
 // mapToSlice converts a map to a slice of strings
