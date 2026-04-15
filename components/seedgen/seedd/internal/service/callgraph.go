@@ -56,12 +56,13 @@ func (s *RunSeedsService) dryRunSeeds(harnessBinary string, seedsPaths []string)
 		zap.Int("seeds_count", len(seedsPaths)),
 	)
 
-	// set EXPORT_CALLS=1 and run the seeds with harness binary one by one, and collect the call graph
+	// Run the callgraph-instrumented binary (not coverage binary) with EXPORT_CALLS=1
+	// The callgraph binary is built with SeedMindCFPass.so + libcallgraph_rt.a
 	os.Setenv("EXPORT_CALLS", "1")
 	args := []string{"-timeout=3"}
 	args = append(args, seedsPaths...)
-	cmd := exec.Command(filepath.Join("/out", harnessBinary), args...)
-	cmd.Dir = artifactDir
+	cmd := exec.Command(filepath.Join(callgraphDir, harnessBinary), args...)
+	cmd.Dir = callgraphDir
 	cmd.Run()
 
 	if _, exists := s.callGraphs[harnessBinary]; !exists {

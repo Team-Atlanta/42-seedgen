@@ -100,6 +100,19 @@ def setup_seedd_artifacts():
         os.symlink(compile_cmd_src, compile_cmd_dst)
         log_json("artifact_linked", src=compile_cmd_src, dst=compile_cmd_dst)
 
+    # Symlink callgraph harness binaries to /out/callgraph
+    # SeedD uses these (not coverage binaries) for call graph dry runs
+    callgraph_dir = "/runner/artifacts/callgraph"
+    callgraph_dst = "/out/callgraph"
+    if os.path.isdir(callgraph_dir):
+        os.makedirs(callgraph_dst, exist_ok=True)
+        for item in os.listdir(callgraph_dir):
+            src = os.path.join(callgraph_dir, item)
+            dst = os.path.join(callgraph_dst, item)
+            if os.path.isfile(src) and not os.path.exists(dst):
+                os.symlink(src, dst)
+                log_json("artifact_linked", src=src, dst=dst)
+
     # Symlink LLVM tools to /usr/local/bin so getcov can find them
     # These need to be version-matched with the build environment
     for tool in ["llvm-profdata", "llvm-cov"]:
