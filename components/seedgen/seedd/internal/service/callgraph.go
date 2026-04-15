@@ -87,6 +87,18 @@ func (s *RunSeedsService) dryRunSeeds(harnessBinary string, seedsPaths []string)
 	}
 	s.callGraphs[harnessBinary].Update()
 
+	// Log graph stats and node names for debugging
+	nodeCount := len(s.callGraphs[harnessBinary].nodes)
+	nodeNames := make([]string, 0, nodeCount)
+	for name := range s.callGraphs[harnessBinary].nodes {
+		nodeNames = append(nodeNames, name)
+	}
+	logger.Info("Call graph built",
+		zap.String("harness_binary", harnessBinary),
+		zap.Int("node_count", nodeCount),
+		zap.Strings("nodes", nodeNames),
+	)
+
 	// let's check if LLVMFuzzerTestOneInput is in the call graph
 	if _, exists := s.callGraphs[harnessBinary].nodes["LLVMFuzzerTestOneInput"]; !exists {
 		logger.Warn("LLVMFuzzerTestOneInput not found in call graph",
