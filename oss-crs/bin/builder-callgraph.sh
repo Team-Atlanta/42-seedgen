@@ -6,10 +6,12 @@ echo "[builder-callgraph] Starting callgraph build..."
 
 # Configure ARGUS for callgraph instrumentation
 # AdditionalPassesVisitor adds: -fpass-plugin=/usr/local/lib/SeedMindCFPass.so
-# AdditionalObjectsVisitor links: libcallgraph_rt.a
-# NOTE: Must use absolute path - ARGUS find_object doesn't search /usr/local/lib/
+# RuntimeVisitor links: libcallgraph_rt.a + -lpthread -ldl -lgcc (required by Rust runtime)
+# NOTE: Must use ADD_RUNTIME + BANDFUZZ_RUNTIME (not ADD_ADDITIONAL_OBJECTS) to get
+# the pthread/dl/gcc deps that libcallgraph_rt.a needs for backtrace symbolization
 export ADD_ADDITIONAL_PASSES=/usr/local/lib/SeedMindCFPass.so
-export ADD_ADDITIONAL_OBJECTS=/usr/local/lib/libcallgraph_rt.a
+export ADD_RUNTIME=1
+export BANDFUZZ_RUNTIME=/usr/local/lib/libcallgraph_rt.a
 export CC=/usr/local/bin/argus
 export CXX=/usr/local/bin/argus
 
