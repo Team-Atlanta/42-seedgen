@@ -166,11 +166,11 @@ def start_seedd() -> subprocess.Popen:
 
     log_json("start_seedd")
 
-    # Start SeedD as subprocess (only -debug flag available)
+    # Start SeedD as subprocess — stderr goes to our stderr for visibility in logs
     proc = subprocess.Popen(
         ["/usr/local/bin/seedd"],
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        stderr=sys.stderr
     )
 
     log_json("seedd_process_started", pid=proc.pid)
