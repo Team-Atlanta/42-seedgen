@@ -61,9 +61,26 @@ func (s *RunSeedsService) dryRunSeeds(harnessBinary string, seedsPaths []string)
 	os.Setenv("EXPORT_CALLS", "1")
 	args := []string{"-timeout=3"}
 	args = append(args, seedsPaths...)
-	cmd := exec.Command(filepath.Join(callgraphDir, harnessBinary), args...)
+	callgraphBinary := filepath.Join(callgraphDir, harnessBinary)
+	cmd := exec.Command(callgraphBinary, args...)
 	cmd.Dir = callgraphDir
-	cmd.Run()
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		logger.Warn("Callgraph dry run failed",
+			zap.String("binary", callgraphBinary),
+			zap.Error(err),
+			zap.String("stderr", stderr.String()),
+		)
+	}
+
+	// Check if call log was produced
+	if _, err := os.Stat(CallLogFile); os.IsNotExist(err) {
+		logger.Warn("Call log file not produced by dry run",
+			zap.String("expected_path", CallLogFile),
+			zap.String("binary", callgraphBinary),
+		)
+	}
 
 	if _, exists := s.callGraphs[harnessBinary]; !exists {
 		s.callGraphs[harnessBinary] = NewCallGraph()
@@ -81,7 +98,11 @@ func (s *RunSeedsService) dryRunSeeds(harnessBinary string, seedsPaths []string)
 			logDir = "/shared"
 		}
 		uuid := uuid.New()
-		copyFile(CallLogFile, fmt.Sprintf("%s/callgraph_%s.log", logDir, uuid))
+		if err := copyFile(CallLogFile, fmt.Sprintf("%s/callgraph_%s.log", logDir, uuid)); err != nil {
+			logger.Warn("Failed to copy callgraph log",
+				zap.Error(err),
+			)
+		}
 	}
 
 	logger.Info("Dry run seeds completed",
