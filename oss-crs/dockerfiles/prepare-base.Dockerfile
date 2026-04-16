@@ -46,15 +46,6 @@ RUN cd runtime && cargo build --release
 # Output: /app/runtime/target/release/libcallgraph_rt.a
 
 # ============================================================
-# Stage: builder_llvm_pass - LLVM pass for call graph extraction
-# ============================================================
-FROM gcr.io/oss-fuzz-base/base-builder AS builder_llvm_pass
-WORKDIR /app
-COPY components/seedgen/callgraph/llvm /app/llvm
-RUN cd llvm && ./build.sh
-# Output: /app/llvm/SeedMindCFPass.so
-
-# ============================================================
 # Stage: runtime - Combined image with all tools installed
 # ============================================================
 FROM gcr.io/oss-fuzz-base/base-builder AS runtime
@@ -64,7 +55,8 @@ COPY --from=builder_argus /app/argus/target/release/argus /usr/local/bin/argus
 COPY --from=builder_getcov /app/getcov/target/release/getcov /usr/local/bin/getcov
 COPY --from=builder_seedd /app/seedd/bin/seedd /usr/local/bin/seedd
 COPY --from=builder_callgraph /app/runtime/target/release/libcallgraph_rt.a /usr/local/lib/libcallgraph_rt.a
-COPY --from=builder_llvm_pass /app/llvm/SeedMindCFPass.so /usr/local/lib/SeedMindCFPass.so
+# Note: SeedMindCFPass.so is built from source in builder.Dockerfile against
+# the target's LLVM version for API compatibility
 
 # Verify tools are executable
 RUN argus --help || true

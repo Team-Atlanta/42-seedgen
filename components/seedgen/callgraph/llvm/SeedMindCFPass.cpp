@@ -83,7 +83,7 @@ extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
 llvmGetPassPluginInfo() {
   return {LLVM_PLUGIN_API_VERSION, "SeedMindCFPass", LLVM_VERSION_STRING,
           [](PassBuilder &PB) {
-            PB.registerOptimizerLastEPCallback(
+            PB.registerPipelineStartEPCallback(
                 [](ModulePassManager &MPM, OptimizationLevel Level) {
                   MPM.addPass(SeedMindCFPass());
                 });
