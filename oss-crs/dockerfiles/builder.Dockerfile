@@ -10,12 +10,10 @@ RUN /opt/libCRS/install.sh
 # Copy ARGUS compiler wrapper from prepare phase
 COPY --from=seedgen-runtime:latest /usr/local/bin/argus /usr/local/bin/argus
 
-# Build LLVM pass from source against the target's LLVM version
-# The pass plugin API version must match the target's clang exactly
+# Build LLVM pass and copy callgraph runtime (C/C++ targets only)
+# Skipped gracefully on JVM targets where llvm-config is unavailable
 COPY components/seedgen/callgraph/llvm /tmp/llvm-pass
-RUN cd /tmp/llvm-pass && ./build.sh && cp SeedMindCFPass.so /SeedMindCFPass.so && rm -rf /tmp/llvm-pass
-
-# Copy pre-built callgraph runtime library (Rust, no LLVM version dependency)
+RUN cd /tmp/llvm-pass && (./build.sh && cp SeedMindCFPass.so /SeedMindCFPass.so || echo "LLVM pass build skipped (no llvm-config)") && rm -rf /tmp/llvm-pass
 COPY --from=seedgen-runtime:latest /usr/local/lib/libcallgraph_rt.a /libcallgraph_rt.a
 
 # Copy build script
