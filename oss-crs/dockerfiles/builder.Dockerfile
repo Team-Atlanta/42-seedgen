@@ -10,9 +10,12 @@ RUN /opt/libCRS/install.sh
 # Copy ARGUS compiler wrapper from prepare phase
 COPY --from=seedgen-runtime:latest /usr/local/bin/argus /usr/local/bin/argus
 
-# Copy LLVM pass and runtime library for callgraph instrumentation
-# Placed at root (/) to match find_object search paths in ARGUS
-COPY --from=seedgen-runtime:latest /usr/local/lib/SeedMindCFPass.so /SeedMindCFPass.so
+# Build LLVM pass from source against the target's LLVM version
+# The pass plugin API version must match the target's clang exactly
+COPY components/seedgen/callgraph/llvm /tmp/llvm-pass
+RUN cd /tmp/llvm-pass && ./build.sh && cp SeedMindCFPass.so /SeedMindCFPass.so && rm -rf /tmp/llvm-pass
+
+# Copy pre-built callgraph runtime library (Rust, no LLVM version dependency)
 COPY --from=seedgen-runtime:latest /usr/local/lib/libcallgraph_rt.a /libcallgraph_rt.a
 
 # Copy build script
