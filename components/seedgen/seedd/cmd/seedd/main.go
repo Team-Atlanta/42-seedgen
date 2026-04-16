@@ -7,6 +7,8 @@ import (
 	"context"
 	"flag"
 	"log"
+	"os"
+	"path/filepath"
 
 	"go.uber.org/zap"
 )
@@ -23,10 +25,13 @@ func main() {
 
 	logger := logging.Logger
 
-	// try to construct the compilation database
-	compilation_database_path, err := utils.ConstructCompilationDatabase()
-	if err != nil {
-		logger.Error("Failed to construct compilation database", zap.Error(err))
+	// Use pre-built compilation database if available, otherwise construct it
+	compilation_database_path := "/out/compile_commands"
+	if _, err := os.Stat(filepath.Join(compilation_database_path, "compile_commands.json")); err != nil {
+		compilation_database_path, err = utils.ConstructCompilationDatabase()
+		if err != nil {
+			logger.Error("Failed to construct compilation database", zap.Error(err))
+		}
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
