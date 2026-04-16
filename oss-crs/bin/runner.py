@@ -338,7 +338,7 @@ def main():
     log_json("runner_start")
 
     # Get environment variables
-    target_harness = os.getenv("TARGET_HARNESS")
+    target_harness = os.getenv("OSS_CRS_TARGET_HARNESS") or os.getenv("TARGET_HARNESS")
     num_seeds = int(os.getenv("NUM_SEEDS", "100"))
     llm_api_url = os.getenv("OSS_CRS_LLM_API_URL")
     llm_api_key = os.getenv("OSS_CRS_LLM_API_KEY")

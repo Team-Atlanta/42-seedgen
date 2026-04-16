@@ -22,9 +22,6 @@ crs_run_phase:
 run:
   image: seedgen-runner:latest
   env:
-    - OSS_CRS_LLM_API_URL
-    - OSS_CRS_LLM_API_KEY
-    - TARGET_HARNESS
     - NUM_SEEDS
   inputs:
     - harness
