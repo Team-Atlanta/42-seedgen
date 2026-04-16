@@ -15,6 +15,7 @@ from typing import Optional
 # Add seedgen2 to path and import
 sys.path.insert(0, '/runner')
 from seedgen2.seedgen import SeedGenAgent
+from seedgen2.seedmini import SeedMiniAgent
 
 
 def log_json(event: str, **kwargs):
@@ -269,6 +270,67 @@ def run_seedgen_loop(harness_path: str, project_name: str, num_seeds: int, seedd
             time.sleep(5)  # Brief pause on error before retry
 
 
+def find_harness_source(src_dir, target_harness, is_java=False):
+    """Find harness source file by searching for the fuzzer entry point function."""
+    target_string = "fuzzerTestOneInput" if is_java else "LLVMFuzzerTestOneInput"
+    results = {}
+
+    for root, _, files in os.walk(src_dir):
+        for filename in files:
+            file_path = os.path.join(root, filename)
+            file_base, _ = os.path.splitext(filename)
+            try:
+                with open(file_path, "r", errors="replace") as f:
+                    content = f.read()
+            except Exception:
+                continue
+            if target_string in content:
+                results[file_base] = content
+
+    if target_harness and target_harness in results:
+        return results[target_harness]
+
+    # Return first match if no specific target
+    if results:
+        return next(iter(results.values()))
+
+    return None
+
+
+def run_mini_loop(project_name, harness_source, num_seeds):
+    """Run seedgen mini pipeline (no SeedD, no coverage — just LLM generation)."""
+    result_dir = "/runner/seeds-out"
+    os.makedirs(result_dir, exist_ok=True)
+
+    iteration = 0
+    while True:
+        iteration += 1
+        log_json("pipeline_start", iteration=iteration, mode="mini")
+
+        gen_model = os.getenv("SEEDGEN_GENERATIVE_MODEL", "claude-3.5-sonnet")
+
+        agent = SeedMiniAgent(
+            result_dir=result_dir,
+            project_name=project_name,
+            harness_binary=project_name,
+            harness_source=harness_source,
+            gen_model=gen_model
+        )
+
+        try:
+            agent.run()
+            seed_count = len([f for f in os.listdir(result_dir) if os.path.isfile(os.path.join(result_dir, f))])
+            log_json("pipeline_complete", iteration=iteration, total_seeds=seed_count, mode="mini")
+
+            if seed_count >= num_seeds:
+                log_json("target_reached", total_seeds=seed_count, target=num_seeds)
+                break
+
+        except Exception as e:
+            log_json("pipeline_error", iteration=iteration, error=str(e), mode="mini")
+            time.sleep(5)
+
+
 def main():
     """Main runner entrypoint."""
     log_json("runner_start")
@@ -278,25 +340,22 @@ def main():
     num_seeds = int(os.getenv("NUM_SEEDS", "100"))
     llm_api_url = os.getenv("OSS_CRS_LLM_API_URL")
     llm_api_key = os.getenv("OSS_CRS_LLM_API_KEY")
+    fuzzing_language = os.getenv("FUZZING_LANGUAGE", "c")
 
     log_json("environment_loaded",
             target_harness=target_harness,
             num_seeds=num_seeds,
+            fuzzing_language=fuzzing_language,
             llm_api_url_set=bool(llm_api_url),
             llm_api_key_set=bool(llm_api_key))
+
+    is_java = fuzzing_language in ("jvm", "java")
 
     # Download build artifacts
     try:
         download_artifacts()
     except Exception as e:
         log_json("fatal_error", stage="download_artifacts", error=str(e))
-        sys.exit(1)
-
-    # Setup /out directory for SeedD
-    try:
-        setup_seedd_artifacts()
-    except Exception as e:
-        log_json("fatal_error", stage="setup_seedd_artifacts", error=str(e))
         sys.exit(1)
 
     # Register seed directories
@@ -306,49 +365,78 @@ def main():
         log_json("fatal_error", stage="register_seed_dirs", error=str(e))
         sys.exit(1)
 
-    # Create /shared for SeedD <-> seedgen file exchange
-    os.makedirs("/shared", exist_ok=True)
+    project_name = target_harness if target_harness else "unknown"
 
-    # Start SeedD
-    try:
-        seedd_proc = start_seedd()
-    except Exception as e:
-        log_json("fatal_error", stage="start_seedd", error=str(e))
-        sys.exit(1)
+    if is_java:
+        # Mini mode: no SeedD, no coverage — just LLM-based generation from source
+        log_json("mode_selected", mode="mini", language=fuzzing_language)
 
-    log_json("runner_ready",
-            seedd_pid=seedd_proc.pid,
-            artifacts_ready=True,
-            seed_dirs_registered=True)
-
-    # Determine harness path from artifacts
-    harness_path = os.path.join("/runner/artifacts/harness", "harness")
-    if not os.path.exists(harness_path):
-        # Try finding any executable in the coverage-harness directory
-        harness_dir = "/runner/artifacts/harness"
-        executables = [f for f in os.listdir(harness_dir)
-                      if os.path.isfile(os.path.join(harness_dir, f))
-                      and os.access(os.path.join(harness_dir, f), os.X_OK)]
-        if executables:
-            harness_path = os.path.join(harness_dir, executables[0])
-        else:
-            log_json("fatal_error", stage="harness_detection", error="No harness binary found")
+        harness_source = find_harness_source("/src", target_harness, is_java=True)
+        if not harness_source:
+            log_json("fatal_error", stage="harness_detection",
+                    error="No Java harness source with fuzzerTestOneInput found in /src")
             sys.exit(1)
 
-    # Determine project name from TARGET_HARNESS or harness path
-    project_name = target_harness if target_harness else os.path.basename(harness_path)
+        log_json("starting_seedgen_loop", mode="mini",
+                project_name=project_name, target_seeds=num_seeds)
 
-    log_json("starting_seedgen_loop",
-            harness_path=harness_path,
-            project_name=project_name,
-            target_seeds=num_seeds)
+        try:
+            run_mini_loop(project_name, harness_source, num_seeds)
+        except Exception as e:
+            log_json("fatal_error", stage="run_mini_loop", error=str(e))
+            sys.exit(1)
+    else:
+        # Full mode: SeedD + coverage + callgraph
+        log_json("mode_selected", mode="full", language=fuzzing_language)
 
-    # Run seedgen pipeline
-    try:
-        run_seedgen_loop(harness_path, project_name, num_seeds, seedd_proc)
-    except Exception as e:
-        log_json("fatal_error", stage="run_seedgen_loop", error=str(e))
-        sys.exit(1)
+        # Setup /out directory for SeedD
+        try:
+            setup_seedd_artifacts()
+        except Exception as e:
+            log_json("fatal_error", stage="setup_seedd_artifacts", error=str(e))
+            sys.exit(1)
+
+        # Create /shared for SeedD <-> seedgen file exchange
+        os.makedirs("/shared", exist_ok=True)
+
+        # Start SeedD
+        try:
+            seedd_proc = start_seedd()
+        except Exception as e:
+            log_json("fatal_error", stage="start_seedd", error=str(e))
+            sys.exit(1)
+
+        log_json("runner_ready",
+                seedd_pid=seedd_proc.pid,
+                artifacts_ready=True,
+                seed_dirs_registered=True)
+
+        # Determine harness path from artifacts
+        harness_path = os.path.join("/runner/artifacts/harness", "harness")
+        if not os.path.exists(harness_path):
+            harness_dir = "/runner/artifacts/harness"
+            executables = [f for f in os.listdir(harness_dir)
+                          if os.path.isfile(os.path.join(harness_dir, f))
+                          and os.access(os.path.join(harness_dir, f), os.X_OK)]
+            if executables:
+                harness_path = os.path.join(harness_dir, executables[0])
+            else:
+                log_json("fatal_error", stage="harness_detection",
+                        error="No harness binary found")
+                sys.exit(1)
+
+        project_name = target_harness if target_harness else os.path.basename(harness_path)
+
+        log_json("starting_seedgen_loop",
+                harness_path=harness_path,
+                project_name=project_name,
+                target_seeds=num_seeds)
+
+        try:
+            run_seedgen_loop(harness_path, project_name, num_seeds, seedd_proc)
+        except Exception as e:
+            log_json("fatal_error", stage="run_seedgen_loop", error=str(e))
+            sys.exit(1)
 
     log_json("runner_complete", message="Seedgen pipeline finished")
 

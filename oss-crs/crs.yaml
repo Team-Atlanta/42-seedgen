@@ -26,6 +26,7 @@ run:
     - OSS_CRS_LLM_API_KEY
     - TARGET_HARNESS
     - NUM_SEEDS
+    - FUZZING_LANGUAGE
   inputs:
     - harness
     - compile-commands
@@ -40,6 +41,7 @@ supported_target:
   language:
     - c
     - c++
+    - jvm
   sanitizer:
     - address
   architecture:
