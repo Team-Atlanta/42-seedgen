@@ -271,7 +271,8 @@ def run_seedgen_loop(harness_path: str, project_name: str, num_seeds: int, seedd
 
 
 def find_harness_source(src_dir, target_harness, is_java=False):
-    """Find harness source file by searching for the fuzzer entry point function."""
+    """Find harness source file by searching for the fuzzer entry point function.
+    Returns (harness_name, source_code) or (None, None)."""
     target_string = "fuzzerTestOneInput" if is_java else "LLVMFuzzerTestOneInput"
     results = {}
 
@@ -288,13 +289,14 @@ def find_harness_source(src_dir, target_harness, is_java=False):
                 results[file_base] = content
 
     if target_harness and target_harness in results:
-        return results[target_harness]
+        return target_harness, results[target_harness]
 
     # Return first match if no specific target
     if results:
-        return next(iter(results.values()))
+        name = next(iter(results.keys()))
+        return name, results[name]
 
-    return None
+    return None, None
 
 
 def run_mini_loop(project_name, harness_source, num_seeds):
@@ -365,17 +367,17 @@ def main():
         log_json("fatal_error", stage="register_seed_dirs", error=str(e))
         sys.exit(1)
 
-    project_name = target_harness if target_harness else "unknown"
-
     if is_java:
         # Mini mode: no SeedD, no coverage — just LLM-based generation from source
         log_json("mode_selected", mode="mini", language=fuzzing_language)
 
-        harness_source = find_harness_source("/src", target_harness, is_java=True)
+        harness_name, harness_source = find_harness_source("/src", target_harness, is_java=True)
         if not harness_source:
             log_json("fatal_error", stage="harness_detection",
                     error="No Java harness source with fuzzerTestOneInput found in /src")
             sys.exit(1)
+
+        project_name = target_harness if target_harness else harness_name
 
         log_json("starting_seedgen_loop", mode="mini",
                 project_name=project_name, target_seeds=num_seeds)
