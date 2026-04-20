@@ -414,12 +414,16 @@ def main():
                 seed_dirs_registered=True)
 
         # Determine harness path from artifacts
-        harness_path = os.path.join("/runner/artifacts/harness", "harness")
-        if not os.path.exists(harness_path):
-            harness_dir = "/runner/artifacts/harness"
+        harness_dir = "/runner/artifacts/harness"
+        if target_harness and os.path.exists(os.path.join(harness_dir, target_harness)):
+            harness_path = os.path.join(harness_dir, target_harness)
+        else:
+            # Fallback: find first executable that isn't an LLVM tool
+            non_harness = {"llvm-cov", "llvm-profdata", "llvm-symbolizer"}
             executables = [f for f in os.listdir(harness_dir)
                           if os.path.isfile(os.path.join(harness_dir, f))
-                          and os.access(os.path.join(harness_dir, f), os.X_OK)]
+                          and os.access(os.path.join(harness_dir, f), os.X_OK)
+                          and f not in non_harness]
             if executables:
                 harness_path = os.path.join(harness_dir, executables[0])
             else:
