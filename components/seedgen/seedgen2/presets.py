@@ -19,7 +19,7 @@ class BaseModel:
         self.model = ChatOpenAI(
             model=model_name,
             base_url=os.getenv("OSS_CRS_LLM_API_URL"),
-            api_key=SecretStr(os.getenv("OSS_CRS_LLM_API_KEY")),
+            api_key=SecretStr(open(os.environ["OSS_CRS_LLM_API_KEY_FILE"]).read().strip() if os.environ.get("OSS_CRS_LLM_API_KEY_FILE") else os.getenv("OSS_CRS_LLM_API_KEY")),
             include_response_headers=True
         )
         # Initialize json_model based on model capabilities
@@ -54,7 +54,7 @@ class SeedGen2GenerativeModel(BaseModel):
                 cls._thread_local.instance.model = ChatOpenAI(
                     model=model_name,
                     base_url=os.getenv("OSS_CRS_LLM_API_URL"),
-                    api_key=SecretStr(os.getenv("OSS_CRS_LLM_API_KEY")),
+                    api_key=SecretStr(open(os.environ["OSS_CRS_LLM_API_KEY_FILE"]).read().strip() if os.environ.get("OSS_CRS_LLM_API_KEY_FILE") else os.getenv("OSS_CRS_LLM_API_KEY")),
                     include_response_headers=True
                 )
                 # Initialize json_model based on model capabilities

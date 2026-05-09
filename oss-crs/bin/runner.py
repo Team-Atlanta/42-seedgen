@@ -341,7 +341,7 @@ def main():
     target_harness = os.getenv("OSS_CRS_TARGET_HARNESS") or os.getenv("TARGET_HARNESS")
     num_seeds = int(os.getenv("NUM_SEEDS", "100"))
     llm_api_url = os.getenv("OSS_CRS_LLM_API_URL")
-    llm_api_key = os.getenv("OSS_CRS_LLM_API_KEY")
+    llm_api_key = open(os.environ["OSS_CRS_LLM_API_KEY_FILE"]).read().strip() if os.environ.get("OSS_CRS_LLM_API_KEY_FILE") else os.getenv("OSS_CRS_LLM_API_KEY")
     fuzzing_language = os.getenv("FUZZING_LANGUAGE", "c")
 
     log_json("environment_loaded",
